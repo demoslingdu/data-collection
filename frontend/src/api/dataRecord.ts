@@ -1,0 +1,164 @@
+/**
+ * 数据记录相关 API
+ */
+import apiClient from './index'
+import type { ApiResponse } from './auth'
+
+// 数据记录接口
+export interface DataRecord {
+  id: number
+  title: string
+  description: string
+  platform: 'taobao' | 'tmall' | 'jd' | 'pdd' | 'douyin' | 'kuaishou' | 'xiaohongshu' | 'other'
+  url: string
+  price?: number
+  quantity?: number
+  contact_info?: string
+  notes?: string
+  status: 'unclaimed' | 'claimed' | 'completed'
+  submitter_id: number
+  claimer_id?: number
+  submitted_at: string
+  claimed_at?: string
+  completed_at?: string
+  created_at: string
+  updated_at: string
+  submitter?: {
+    id: number
+    name: string
+    email: string
+  }
+  claimer?: {
+    id: number
+    name: string
+    email: string
+  }
+}
+
+// 数据记录创建数据
+export interface CreateDataRecordData {
+  title: string
+  description: string
+  platform: string
+  url: string
+  price?: number
+  quantity?: number
+  contact_info?: string
+  notes?: string
+}
+
+// 数据记录更新数据
+export interface UpdateDataRecordData {
+  title?: string
+  description?: string
+  platform?: string
+  url?: string
+  price?: number
+  quantity?: number
+  contact_info?: string
+  notes?: string
+}
+
+// 数据记录查询参数
+export interface DataRecordQuery {
+  page?: number
+  per_page?: number
+  status?: string
+  platform?: string
+  search?: string
+  submitter_id?: number
+  claimer_id?: number
+}
+
+// 分页响应格式
+export interface PaginatedResponse<T> {
+  data: T[]
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+  from: number
+  to: number
+}
+
+// 统计数据格式
+export interface Statistics {
+  total_records: number
+  unclaimed_records: number
+  claimed_records: number
+  completed_records: number
+  my_submitted: number
+  my_claimed: number
+  platform_stats: Record<string, number>
+}
+
+/**
+ * 获取数据记录列表
+ */
+export const getDataRecords = (params?: DataRecordQuery): Promise<ApiResponse<PaginatedResponse<DataRecord>>> => {
+  return apiClient.get('/data-records', { params })
+}
+
+/**
+ * 获取单个数据记录
+ */
+export const getDataRecord = (id: number): Promise<ApiResponse<DataRecord>> => {
+  return apiClient.get(`/data-records/${id}`)
+}
+
+/**
+ * 创建数据记录
+ */
+export const createDataRecord = (data: CreateDataRecordData): Promise<ApiResponse<DataRecord>> => {
+  return apiClient.post('/data-records', data)
+}
+
+/**
+ * 更新数据记录
+ */
+export const updateDataRecord = (id: number, data: UpdateDataRecordData): Promise<ApiResponse<DataRecord>> => {
+  return apiClient.put(`/data-records/${id}`, data)
+}
+
+/**
+ * 删除数据记录
+ */
+export const deleteDataRecord = (id: number): Promise<ApiResponse> => {
+  return apiClient.delete(`/data-records/${id}`)
+}
+
+/**
+ * 领取数据记录
+ */
+export const claimDataRecord = (id: number): Promise<ApiResponse<DataRecord>> => {
+  return apiClient.post(`/data-records/${id}/claim`)
+}
+
+/**
+ * 完成数据记录
+ */
+export const completeDataRecord = (id: number): Promise<ApiResponse<DataRecord>> => {
+  return apiClient.post(`/data-records/${id}/complete`)
+}
+
+/**
+ * 获取统计数据
+ */
+export const getStatistics = (): Promise<ApiResponse<Statistics>> => {
+  return apiClient.get('/data-records/statistics')
+}
+
+/**
+ * 数据记录 API 对象
+ * 为了兼容现有代码，将所有 API 函数组织成一个对象
+ */
+export const dataRecordApi = {
+  getList: getDataRecords,
+  getDataRecord,
+  createDataRecord,
+  updateDataRecord,
+  deleteDataRecord,
+  claimDataRecord,
+  completeDataRecord,
+  getStatistics
+}
