@@ -44,11 +44,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('{id}/mark-duplicate', [DataRecordController::class, 'markDuplicate']); // 标记重复
     });
 
-    // 图片上传相关
+    // 图片上传相关 - 专为安卓应用优化
     Route::prefix('images')->group(function () {
-        Route::post('upload', [ImageController::class, 'upload']);         // 上传图片
-        Route::get('/', [ImageController::class, 'index']);                // 获取图片列表
-        Route::delete('/', [ImageController::class, 'delete']);            // 删除图片
+        Route::post('upload', [ImageController::class, 'upload']);         // 上传图片（支持普通文件、Base64、批量上传）
+        Route::get('/', [ImageController::class, 'index']);                // 获取图片列表（支持分页和筛选）
+        Route::get('/statistics', [ImageController::class, 'statistics']); // 获取图片统计信息
+        Route::delete('/', [ImageController::class, 'delete']);            // 删除图片（支持缩略图同步删除）
     });
 
     // 用户管理相关（仅管理员可访问）
