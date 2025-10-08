@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DataRecordController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\ImageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +39,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{id}', [DataRecordController::class, 'update']);       // 更新记录
         Route::delete('{id}', [DataRecordController::class, 'destroy']);   // 删除记录
         Route::delete('batch', [DataRecordController::class, 'batchDestroy']); // 批量删除
+    });
+
+    // 图片上传相关
+    Route::prefix('images')->group(function () {
+        Route::post('upload', [ImageController::class, 'upload']);         // 上传图片
+        Route::get('/', [ImageController::class, 'index']);                // 获取图片列表
+        Route::delete('/', [ImageController::class, 'delete']);            // 删除图片
     });
 
     // 用户管理相关（仅管理员可访问）
