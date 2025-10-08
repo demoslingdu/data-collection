@@ -149,11 +149,17 @@ class ImageController extends Controller
         // 压缩并保存主图片
         if ($extension === 'png') {
             // PNG 格式保持透明度
-            $image->save($fullPath);
+            $encoded = $image->toPng();
+        } elseif ($extension === 'webp') {
+            // WebP 格式
+            $encoded = $image->toWebp(quality: self::IMAGE_QUALITY);
         } else {
-            // 其他格式进行质量压缩
-            $image->save($fullPath, quality: self::IMAGE_QUALITY);
+            // JPEG 格式进行质量压缩
+            $encoded = $image->toJpeg(quality: self::IMAGE_QUALITY);
         }
+        
+        // 保存主图片文件
+        file_put_contents($fullPath, $encoded);
 
         // 生成缩略图
         $thumbnailFilename = 'thumb_' . $filename;
@@ -162,11 +168,17 @@ class ImageController extends Controller
         $thumbnail = clone $image;
         $thumbnail->scale(width: self::THUMBNAIL_SIZE);
         
+        // 编码并保存缩略图
         if ($extension === 'png') {
-            $thumbnail->save($thumbnailPath);
+            $thumbnailEncoded = $thumbnail->toPng();
+        } elseif ($extension === 'webp') {
+            $thumbnailEncoded = $thumbnail->toWebp(quality: self::IMAGE_QUALITY);
         } else {
-            $thumbnail->save($thumbnailPath, quality: self::IMAGE_QUALITY);
+            $thumbnailEncoded = $thumbnail->toJpeg(quality: self::IMAGE_QUALITY);
         }
+        
+        // 保存缩略图文件
+        file_put_contents($thumbnailPath, $thumbnailEncoded);
 
         // 获取压缩后的文件大小
         $compressedSize = filesize($fullPath);
@@ -367,10 +379,18 @@ class ImageController extends Controller
 
         // 压缩并保存主图片
         if ($extension === 'png') {
-            $image->save($fullPath);
+            // PNG 格式保持透明度
+            $encoded = $image->toPng();
+        } elseif ($extension === 'webp') {
+            // WebP 格式
+            $encoded = $image->toWebp(quality: self::IMAGE_QUALITY);
         } else {
-            $image->save($fullPath, quality: self::IMAGE_QUALITY);
+            // JPEG 格式进行质量压缩
+            $encoded = $image->toJpeg(quality: self::IMAGE_QUALITY);
         }
+        
+        // 保存主图片文件
+        file_put_contents($fullPath, $encoded);
 
         // 生成缩略图
         $thumbnailFilename = 'thumb_' . $filename;
@@ -379,11 +399,17 @@ class ImageController extends Controller
         $thumbnail = clone $image;
         $thumbnail->scale(width: self::THUMBNAIL_SIZE);
         
+        // 编码并保存缩略图
         if ($extension === 'png') {
-            $thumbnail->save($thumbnailPath);
+            $thumbnailEncoded = $thumbnail->toPng();
+        } elseif ($extension === 'webp') {
+            $thumbnailEncoded = $thumbnail->toWebp(quality: self::IMAGE_QUALITY);
         } else {
-            $thumbnail->save($thumbnailPath, quality: self::IMAGE_QUALITY);
+            $thumbnailEncoded = $thumbnail->toJpeg(quality: self::IMAGE_QUALITY);
         }
+        
+        // 保存缩略图文件
+        file_put_contents($thumbnailPath, $thumbnailEncoded);
 
         // 获取压缩后的文件大小
         $compressedSize = filesize($fullPath);
