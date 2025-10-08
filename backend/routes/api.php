@@ -39,6 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{id}', [DataRecordController::class, 'update']);       // 更新记录
         Route::delete('{id}', [DataRecordController::class, 'destroy']);   // 删除记录
         Route::delete('batch', [DataRecordController::class, 'batchDestroy']); // 批量删除
+        Route::post('{id}/claim', [DataRecordController::class, 'claim']);  // 领取记录
+        Route::post('{id}/complete', [DataRecordController::class, 'complete']); // 完成记录
+        Route::post('{id}/mark-duplicate', [DataRecordController::class, 'markDuplicate']); // 标记重复
     });
 
     // 图片上传相关
