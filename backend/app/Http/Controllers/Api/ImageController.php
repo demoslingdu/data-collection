@@ -186,7 +186,7 @@ class ImageController extends Controller
 
         // 生成访问URL
         $baseUrl = url('images/' . $dateFolder . '/');
-        $imageUrl = $baseUrl . $filename;
+        $imageUrl = $baseUrl .'/'. $filename;
         $thumbnailUrl = $baseUrl . $thumbnailFilename;
 
         return [
