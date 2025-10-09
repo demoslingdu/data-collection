@@ -78,16 +78,18 @@ class DataRecordController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'image_url' => 'required|url',
+                'image_url' => 'nullable|url',
                 'platform' => 'required|in:douyin,xiaohongshu,taobao,xianyu',
                 'platform_id' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20|regex:/^1[3-9]\d{9}$/',
             ], [
-                'image_url.required' => '图片URL不能为空',
                 'image_url.url' => '图片URL格式不正确',
                 'platform.required' => '来源平台不能为空',
                 'platform.in' => '来源平台必须是：douyin, xiaohongshu, taobao, xianyu',
                 'platform_id.required' => '平台ID不能为空',
                 'platform_id.max' => '平台ID不能超过255个字符',
+                'phone.max' => '手机号不能超过20个字符',
+                'phone.regex' => '手机号格式不正确，请输入有效的11位手机号',
             ]);
 
             if ($validator->fails()) {
@@ -119,6 +121,7 @@ class DataRecordController extends Controller
                 'submitter_id' => Auth::id(),
                 'platform' => $request->platform,
                 'platform_id' => $request->platform_id,
+                'phone' => $request->phone,
                 'is_claimed' => false,
                 'is_completed' => false,
                 'is_duplicate' => $isDuplicate,
