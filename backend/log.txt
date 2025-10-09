@@ -1,44 +1,172 @@
-[2025-10-08 06:25:14] local.ERROR: Call to undefined method Intervention\Image\Image::save() {"userId":2,"exception":"[object] (Error(code: 0): Call to undefined method Intervention\\Image\\Image::save() at /www/wwwroot/data-collection/backend/app/Http/Controllers/Api/ImageController.php:155)
-[stacktrace]
-#0 /www/wwwroot/data-collection/backend/app/Http/Controllers/Api/ImageController.php(87): App\\Http\\Controllers\\Api\\ImageController->processImageUpload()
-#1 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php(46): App\\Http\\Controllers\\Api\\ImageController->upload()
-#2 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Route.php(265): Illuminate\\Routing\\ControllerDispatcher->dispatch()
-#3 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Route.php(211): Illuminate\\Routing\\Route->runController()
-#4 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Router.php(822): Illuminate\\Routing\\Route->run()
-#5 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(180): Illuminate\\Routing\\Router->Illuminate\\Routing\\{closure}()
-#6 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php(50): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#7 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Routing\\Middleware\\SubstituteBindings->handle()
-#8 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php(63): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#9 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Auth\\Middleware\\Authenticate->handle()
-#10 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#11 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Router.php(821): Illuminate\\Pipeline\\Pipeline->then()
-#12 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Router.php(800): Illuminate\\Routing\\Router->runRouteWithinStack()
-#13 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Router.php(764): Illuminate\\Routing\\Router->runRoute()
-#14 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Routing/Router.php(753): Illuminate\\Routing\\Router->dispatchToRoute()
-#15 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(200): Illuminate\\Routing\\Router->dispatch()
-#16 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(180): Illuminate\\Foundation\\Http\\Kernel->Illuminate\\Foundation\\Http\\{closure}()
-#17 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/TransformsRequest.php(21): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#18 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/ConvertEmptyStringsToNull.php(31): Illuminate\\Foundation\\Http\\Middleware\\TransformsRequest->handle()
-#19 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Foundation\\Http\\Middleware\\ConvertEmptyStringsToNull->handle()
-#20 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/TransformsRequest.php(21): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#21 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/TrimStrings.php(51): Illuminate\\Foundation\\Http\\Middleware\\TransformsRequest->handle()
-#22 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Foundation\\Http\\Middleware\\TrimStrings->handle()
-#23 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Http/Middleware/ValidatePostSize.php(27): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#24 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Http\\Middleware\\ValidatePostSize->handle()
-#25 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/PreventRequestsDuringMaintenance.php(109): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#26 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Foundation\\Http\\Middleware\\PreventRequestsDuringMaintenance->handle()
-#27 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Http/Middleware/HandleCors.php(61): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#28 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Http\\Middleware\\HandleCors->handle()
-#29 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Http/Middleware/TrustProxies.php(58): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#30 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Http\\Middleware\\TrustProxies->handle()
-#31 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/InvokeDeferredCallbacks.php(22): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#32 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Foundation\\Http\\Middleware\\InvokeDeferredCallbacks->handle()
-#33 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Http/Middleware/ValidatePathEncoding.php(26): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#34 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(219): Illuminate\\Http\\Middleware\\ValidatePathEncoding->handle()
-#35 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php(137): Illuminate\\Pipeline\\Pipeline->Illuminate\\Pipeline\\{closure}()
-#36 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(175): Illuminate\\Pipeline\\Pipeline->then()
-#37 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Http/Kernel.php(144): Illuminate\\Foundation\\Http\\Kernel->sendRequestThroughRouter()
-#38 /www/wwwroot/data-collection/backend/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1220): Illuminate\\Foundation\\Http\\Kernel->handle()
-#39 /www/wwwroot/data-collection/backend/public/index.php(20): Illuminate\\Foundation\\Application->handleRequest()
-#40 {main}
-"} 
+{
+    "success": true,
+    "code": 200,
+    "message": "获取数据记录列表成功",
+    "data": {
+        "current_page": 1,
+        "data": [
+            {
+                "id": 7,
+                "image_url": "https://collect-api.wlai.vip/images/2025/10/08/81029611-7e35-4c05-9c14-59376a4d14c4.jpg",
+                "submitter_id": 2,
+                "platform": "douyin",
+                "platform_id": "1032071262",
+                "is_claimed": false,
+                "is_completed": false,
+                "claimer_id": null,
+                "is_duplicate": true,
+                "created_at": "2025-10-08T09:06:10.000000Z",
+                "updated_at": "2025-10-08T09:06:10.000000Z",
+                "submitter": {
+                    "id": 2,
+                    "name": "测试用户",
+                    "account": "testuser",
+                    "role": "user",
+                    "created_at": "2025-10-07T09:47:27.000000Z",
+                    "updated_at": "2025-10-07T09:47:27.000000Z"
+                },
+                "claimer": null
+            },
+            {
+                "id": 6,
+                "image_url": "https://collect-api.wlai.vip/images/2025/10/08/1c75deae-1159-4443-a435-82254c5dddf6.jpg",
+                "submitter_id": 2,
+                "platform": "douyin",
+                "platform_id": "1032071262",
+                "is_claimed": false,
+                "is_completed": false,
+                "claimer_id": null,
+                "is_duplicate": true,
+                "created_at": "2025-10-08T08:32:48.000000Z",
+                "updated_at": "2025-10-08T08:32:48.000000Z",
+                "submitter": {
+                    "id": 2,
+                    "name": "测试用户",
+                    "account": "testuser",
+                    "role": "user",
+                    "created_at": "2025-10-07T09:47:27.000000Z",
+                    "updated_at": "2025-10-07T09:47:27.000000Z"
+                },
+                "claimer": null
+            },
+            {
+                "id": 4,
+                "image_url": "https://collect-api.wlai.vip/images/2025/10/08/34014ddc-442e-4b39-8770-a0554164a7ab.jpg",
+                "submitter_id": 2,
+                "platform": "douyin",
+                "platform_id": "1032071262",
+                "is_claimed": false,
+                "is_completed": false,
+                "claimer_id": null,
+                "is_duplicate": false,
+                "created_at": "2025-10-08T08:25:54.000000Z",
+                "updated_at": "2025-10-08T08:25:54.000000Z",
+                "submitter": {
+                    "id": 2,
+                    "name": "测试用户",
+                    "account": "testuser",
+                    "role": "user",
+                    "created_at": "2025-10-07T09:47:27.000000Z",
+                    "updated_at": "2025-10-07T09:47:27.000000Z"
+                },
+                "claimer": null
+            },
+            {
+                "id": 3,
+                "image_url": "https://collect-api.wlai.vip/images/2025/10/08/88ac5438-ce51-404a-838f-d77d37558108.jpg",
+                "submitter_id": 2,
+                "platform": "douyin",
+                "platform_id": "1231222222",
+                "is_claimed": false,
+                "is_completed": false,
+                "claimer_id": null,
+                "is_duplicate": false,
+                "created_at": "2025-10-08T06:58:45.000000Z",
+                "updated_at": "2025-10-08T06:58:45.000000Z",
+                "submitter": {
+                    "id": 2,
+                    "name": "测试用户",
+                    "account": "testuser",
+                    "role": "user",
+                    "created_at": "2025-10-07T09:47:27.000000Z",
+                    "updated_at": "2025-10-07T09:47:27.000000Z"
+                },
+                "claimer": null
+            },
+            {
+                "id": 2,
+                "image_url": "https://collect-api.wlai.vip/images/2025/10/08/b94068e9-4bbb-4009-bad3-56fb1597c80d.jpg",
+                "submitter_id": 2,
+                "platform": "douyin",
+                "platform_id": "123123123",
+                "is_claimed": false,
+                "is_completed": false,
+                "claimer_id": null,
+                "is_duplicate": false,
+                "created_at": "2025-10-08T06:51:55.000000Z",
+                "updated_at": "2025-10-08T06:51:55.000000Z",
+                "submitter": {
+                    "id": 2,
+                    "name": "测试用户",
+                    "account": "testuser",
+                    "role": "user",
+                    "created_at": "2025-10-07T09:47:27.000000Z",
+                    "updated_at": "2025-10-07T09:47:27.000000Z"
+                },
+                "claimer": null
+            },
+            {
+                "id": 1,
+                "image_url": "https://collect-api.wlai.vip/images/2025/10/08/41d211b6-15f4-4ce2-a8e6-66a80313c51c.jpg",
+                "submitter_id": 2,
+                "platform": "douyin",
+                "platform_id": "123123",
+                "is_claimed": false,
+                "is_completed": false,
+                "claimer_id": null,
+                "is_duplicate": false,
+                "created_at": "2025-10-08T06:45:28.000000Z",
+                "updated_at": "2025-10-08T06:45:28.000000Z",
+                "submitter": {
+                    "id": 2,
+                    "name": "测试用户",
+                    "account": "testuser",
+                    "role": "user",
+                    "created_at": "2025-10-07T09:47:27.000000Z",
+                    "updated_at": "2025-10-07T09:47:27.000000Z"
+                },
+                "claimer": null
+            }
+        ],
+        "first_page_url": "http://localhost:8000/api/data-records?page=1",
+        "from": 1,
+        "last_page": 1,
+        "last_page_url": "http://localhost:8000/api/data-records?page=1",
+        "links": [
+            {
+                "url": null,
+                "label": "&laquo; Previous",
+                "page": null,
+                "active": false
+            },
+            {
+                "url": "http://localhost:8000/api/data-records?page=1",
+                "label": "1",
+                "page": 1,
+                "active": true
+            },
+            {
+                "url": null,
+                "label": "Next &raquo;",
+                "page": null,
+                "active": false
+            }
+        ],
+        "next_page_url": null,
+        "path": "http://localhost:8000/api/data-records",
+        "per_page": 10,
+        "prev_page_url": null,
+        "to": 6,
+        "total": 6
+    }
+}

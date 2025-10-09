@@ -24,6 +24,7 @@ class DataRecord extends Model
         'submitter_id',
         'platform',
         'platform_id',
+        'phone',
         'is_claimed',
         'is_completed',
         'claimer_id',

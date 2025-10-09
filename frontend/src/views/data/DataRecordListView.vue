@@ -22,16 +22,39 @@
             </template>
           </a-input>
         </a-form-item>
-        <a-form-item label="状态">
+        <a-form-item label="平台">
           <a-select
-            v-model="searchForm.status"
-            placeholder="请选择状态"
+            v-model="searchForm.platform"
+            placeholder="请选择平台"
             style="width: 120px"
             allow-clear
           >
-            <a-option value="unclaimed">未领取</a-option>
+            <a-option value="douyin">抖音</a-option>
+            <a-option value="kuaishou">快手</a-option>
+            <a-option value="xiaohongshu">小红书</a-option>
+            <a-option value="weibo">微博</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="领取状态">
+          <a-select
+            v-model="searchForm.claimStatus"
+            placeholder="请选择领取状态"
+            style="width: 140px"
+            allow-clear
+          >
             <a-option value="claimed">已领取</a-option>
+            <a-option value="unclaimed">未领取</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="完成状态">
+          <a-select
+            v-model="searchForm.completeStatus"
+            placeholder="请选择完成状态"
+            style="width: 140px"
+            allow-clear
+          >
             <a-option value="completed">已完成</a-option>
+            <a-option value="uncompleted">未完成</a-option>
           </a-select>
         </a-form-item>
         <a-form-item label="时间范围">
@@ -71,36 +94,74 @@
         v-model:selectedKeys="selectedRowKeys"
         @page-change="handlePageChange"
         @page-size-change="handlePageSizeChange"
-        :scroll="{ x: 1200, y: 600 }"
+        :scroll="{ x: 1400, y: 600 }"
         stripe
         hoverable
         size="large"
       >
-        <template #status="{ record }">
-          <a-tag :color="getStatusColor(record.status)">
-            {{ getStatusText(record.status) }}
+        <template #image="{ record }">
+          <a-image
+            :src="record.image_url"
+            width="60"
+            height="60"
+            fit="cover"
+            :preview="true"
+            style="border-radius: 4px; cursor: pointer;"
+          />
+        </template>
+        <template #platform="{ record }">
+          {{ getPlatformText(record.platform) }}
+        </template>
+        <template #is_claimed="{ record }">
+          <a-tag :color="record.is_claimed ? 'green' : 'red'">
+            {{ record.is_claimed ? '已领取' : '未领取' }}
+          </a-tag>
+        </template>
+        <template #is_completed="{ record }">
+          <a-tag :color="record.is_completed ? 'blue' : 'orange'">
+            {{ record.is_completed ? '已完成' : '未完成' }}
+          </a-tag>
+        </template>
+        <template #submitter="{ record }">
+          {{ record.submitter?.name || '未知' }}
+        </template>
+        <template #claimer="{ record }">
+          {{ record.claimer?.name || '未分配' }}
+        </template>
+        <template #is_duplicate="{ record }">
+          <a-tag :color="record.is_duplicate ? 'red' : 'green'">
+            {{ record.is_duplicate ? '重复' : '正常' }}
           </a-tag>
         </template>
         <template #actions="{ record }">
-          <a-space size="small">
-            <a-button type="text" size="mini" @click="handleView(record.id)">
-              <template #icon>
-                <icon-eye />
-              </template>
-              查看
+          <a-space size="mini">
+            <!-- 领取按钮：仅在未领取且未完成时显示 -->
+            <a-button 
+              v-if="!record.is_claimed && !record.is_completed"
+              type="primary" 
+              size="mini" 
+              :loading="claimingIds.has(record.id)"
+              :disabled="claimingIds.has(record.id)"
+              @click="handleClaim(record)"
+            >
+              {{ claimingIds.has(record.id) ? '领取中...' : '领取' }}
             </a-button>
-            <a-button type="text" size="mini" @click="handleEdit(record.id)">
-              <template #icon>
-                <icon-edit />
-              </template>
-              编辑
+            <!-- 完成按钮：仅在已领取且未完成时显示 -->
+            <a-button 
+              v-if="record.is_claimed && !record.is_completed"
+              type="outline" 
+              size="mini" 
+              status="success"
+              :loading="completingIds.has(record.id)"
+              :disabled="completingIds.has(record.id)"
+              @click="handleComplete(record)"
+            >
+              {{ completingIds.has(record.id) ? '完成中...' : '完成' }}
             </a-button>
-            <a-button type="text" size="mini" status="danger" @click="handleDelete(record.id)">
-              <template #icon>
-                <icon-delete />
-              </template>
-              删除
-            </a-button>
+            <!-- 已完成状态显示 -->
+            <a-tag v-if="record.is_completed" color="green" size="small">
+              已完成
+            </a-tag>
           </a-space>
         </template>
         <template #empty>
@@ -121,10 +182,7 @@ import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconSearch,
-  IconDelete,
-  IconRefresh,
-  IconEye,
-  IconEdit
+  IconRefresh
 } from '@arco-design/web-vue/es/icon'
 import { dataRecordApi } from '@/api/dataRecord'
 import type { DataRecord } from '@/api/dataRecord'
@@ -136,10 +194,16 @@ const router = useRouter()
 const loading = ref(false)
 const selectedRowKeys = ref<string[]>([])
 
+// 按钮加载状态
+const claimingIds = ref<Set<number>>(new Set())
+const completingIds = ref<Set<number>>(new Set())
+
 // 搜索表单
 const searchForm = reactive({
   keyword: '',
-  status: '',
+  platform: '',
+  claimStatus: '',
+  completeStatus: '',
   dateRange: []
 })
 
@@ -174,33 +238,60 @@ const columns = [
     }
   },
   {
-    title: '标题',
-    dataIndex: 'title',
-    width: 200,
-    ellipsis: true,
-    tooltip: true
+    title: '图片',
+    dataIndex: 'image_url',
+    slotName: 'image',
+    width: 100,
+    align: 'center'
   },
   {
-    title: '描述',
-    dataIndex: 'description',
-    width: 300,
-    ellipsis: true,
-    tooltip: true
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    slotName: 'status',
+    title: '提交人',
+    dataIndex: 'submitter',
+    slotName: 'submitter',
     width: 120,
-    align: 'center',
-    filterable: {
-      filters: [
-        { text: '未领取', value: 'unclaimed' },
-        { text: '已领取', value: 'claimed' },
-        { text: '已完成', value: 'completed' }
-      ],
-      multiple: true
-    }
+    align: 'center'
+  },
+  {
+    title: '平台',
+    dataIndex: 'platform',
+    slotName: 'platform',
+    width: 100,
+    align: 'center'
+  },
+  {
+    title: '平台ID',
+    dataIndex: 'platform_id',
+    width: 150,
+    ellipsis: true,
+    tooltip: true
+  },
+  {
+    title: '是否领取',
+    dataIndex: 'is_claimed',
+    slotName: 'is_claimed',
+    width: 100,
+    align: 'center'
+  },
+  {
+    title: '是否完成',
+    dataIndex: 'is_completed',
+    slotName: 'is_completed',
+    width: 100,
+    align: 'center'
+  },
+  {
+    title: '领取人',
+    dataIndex: 'claimer',
+    slotName: 'claimer',
+    width: 120,
+    align: 'center'
+  },
+  {
+    title: '是否重复',
+    dataIndex: 'is_duplicate',
+    slotName: 'is_duplicate',
+    width: 100,
+    align: 'center'
   },
   {
     title: '创建时间',
@@ -211,17 +302,9 @@ const columns = [
     }
   },
   {
-    title: '更新时间',
-    dataIndex: 'updated_at',
-    width: 180,
-    sortable: {
-      sortDirections: ['ascend', 'descend']
-    }
-  },
-  {
     title: '操作',
     slotName: 'actions',
-    width: 260,
+    width: 200,
     fixed: 'right',
     align: 'center'
   }
@@ -239,27 +322,16 @@ const rowSelection = reactive({
 })
 
 /**
- * 获取状态颜色
+ * 获取平台中文名称
  */
-const getStatusColor = (status: string): string => {
-  const colorMap: Record<string, string> = {
-    unclaimed: 'blue',
-    claimed: 'orange',
-    completed: 'green'
+const getPlatformText = (platform: string): string => {
+  const platformMap: Record<string, string> = {
+    douyin: '抖音',
+    kuaishou: '快手',
+    xiaohongshu: '小红书',
+    weibo: '微博'
   }
-  return colorMap[status] || 'gray'
-}
-
-/**
- * 获取状态文本
- */
-const getStatusText = (status: string): string => {
-  const textMap: Record<string, string> = {
-    unclaimed: '未领取',
-    claimed: '已领取',
-    completed: '已完成'
-  }
-  return textMap[status] || '未知'
+  return platformMap[platform] || platform
 }
 
 /**
@@ -275,7 +347,9 @@ const handleSearch = () => {
  */
 const handleReset = () => {
   searchForm.keyword = ''
-  searchForm.status = ''
+  searchForm.platform = ''
+  searchForm.claimStatus = ''
+  searchForm.completeStatus = ''
   searchForm.dateRange = []
   pagination.current = 1
   loadData()
@@ -338,6 +412,88 @@ const handlePageSizeChange = (pageSize: number) => {
 }
 
 /**
+ * 处理领取操作
+ */
+const handleClaim = async (record: DataRecord) => {
+  // 防止重复点击
+  if (claimingIds.value.has(record.id)) {
+    return
+  }
+  
+  try {
+    // 设置加载状态
+    claimingIds.value.add(record.id)
+    
+    // 调用后端API进行领取操作
+    const response = await dataRecordApi.claimDataRecord(record.id)
+    
+    if (response.data) {
+      // 更新本地数据状态
+      record.is_claimed = true
+      record.claimer = response.data.claimer
+      record.claimer_id = response.data.claimer_id
+      
+      Message.success('领取成功')
+    }
+  } catch (error: any) {
+    console.error('领取失败:', error)
+    
+    // 处理不同类型的错误
+    if (error.response?.data?.message) {
+      Message.error(error.response.data.message)
+    } else if (error.response?.data?.errors) {
+      const errorMessages = Object.values(error.response.data.errors).flat()
+      Message.error(errorMessages[0] as string)
+    } else {
+      Message.error('领取失败，请稍后重试')
+    }
+  } finally {
+    // 清除加载状态
+    claimingIds.value.delete(record.id)
+  }
+}
+
+/**
+ * 处理完成操作
+ */
+const handleComplete = async (record: DataRecord) => {
+  // 防止重复点击
+  if (completingIds.value.has(record.id)) {
+    return
+  }
+  
+  try {
+    // 设置加载状态
+    completingIds.value.add(record.id)
+    
+    // 调用后端API进行完成操作
+    const response = await dataRecordApi.completeDataRecord(record.id)
+    
+    if (response.data) {
+      // 更新本地数据状态
+      record.is_completed = true
+      
+      Message.success('标记完成成功')
+    }
+  } catch (error: any) {
+    console.error('标记完成失败:', error)
+    
+    // 处理不同类型的错误
+    if (error.response?.data?.message) {
+      Message.error(error.response.data.message)
+    } else if (error.response?.data?.errors) {
+      const errorMessages = Object.values(error.response.data.errors).flat()
+      Message.error(errorMessages[0] as string)
+    } else {
+      Message.error('标记完成失败，请稍后重试')
+    }
+  } finally {
+    // 清除加载状态
+    completingIds.value.delete(record.id)
+  }
+}
+
+/**
  * 加载数据
  */
 const loadData = async () => {
@@ -355,8 +511,16 @@ const loadData = async () => {
       params.search = searchForm.keyword
     }
     
-    if (searchForm.status) {
-      params.status = searchForm.status
+    if (searchForm.platform) {
+      params.platform = searchForm.platform
+    }
+    
+    if (searchForm.claimStatus) {
+      params.is_claimed = searchForm.claimStatus === 'claimed' ? 1 : 0
+    }
+    
+    if (searchForm.completeStatus) {
+      params.is_completed = searchForm.completeStatus === 'completed' ? 1 : 0
     }
     
     // 处理日期范围
