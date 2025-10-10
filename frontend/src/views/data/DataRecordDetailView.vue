@@ -196,6 +196,7 @@ import {
   IconCheckCircle,
   IconInfoCircle
 } from '@arco-design/web-vue/es/icon'
+import type { DataRecord } from '@/api/dataRecord'
 
 // 路由实例
 const router = useRouter()
@@ -206,11 +207,11 @@ const loading = ref(true)
 const recordId = ref(route.params.id as string)
 
 // 记录数据
-const recordData = ref({
-  id: '1',
+const recordData = ref<DataRecord | null>({
+  id: 1,
   title: '示例数据记录详情',
   content: '这是一条详细的数据记录内容，包含了完整的描述信息。这里可以展示记录的具体内容，支持长文本显示。用户可以通过这个页面查看记录的所有详细信息，包括基本信息、内容、标签、附件等。',
-  status: 'active',
+  status: 'unclaimed',
   category: 'type1',
   priority: 'high',
   start_date: '2024-01-15',
@@ -232,7 +233,22 @@ const recordData = ref({
   ],
   remarks: '这是一条备注信息，用于记录额外的说明或注意事项。',
   created_at: '2024-01-15 10:30:00',
-  updated_at: '2024-01-15 15:20:00'
+  updated_at: '2024-01-15 15:20:00',
+  platform: 'taobao',
+  platform_id: 'example123',
+  phone: '13800138000',
+  image_url: 'https://example.com/image.jpg',
+  is_claimed: false,
+  is_completed: false,
+  is_duplicate: false,
+  submitter_id: 1,
+  claimer_id: null,
+  submitter: {
+    id: 1,
+    name: '张三',
+    email: 'zhangsan@example.com'
+  },
+  claimer: null
 })
 
 // 操作历史
@@ -287,25 +303,25 @@ const getStatusText = (status: string): string => {
 /**
  * 获取优先级颜色
  */
-const getPriorityColor = (priority: string): string => {
+const getPriorityColor = (priority?: string): string => {
   const colorMap: Record<string, string> = {
     high: 'red',
     medium: 'orange',
     low: 'blue'
   }
-  return colorMap[priority] || 'gray'
+  return colorMap[priority || ''] || 'gray'
 }
 
 /**
  * 获取优先级文本
  */
-const getPriorityText = (priority: string): string => {
+const getPriorityText = (priority?: string): string => {
   const textMap: Record<string, string> = {
     high: '高',
     medium: '中',
     low: '低'
   }
-  return textMap[priority] || '未知'
+  return textMap[priority || ''] || '未知'
 }
 
 /**

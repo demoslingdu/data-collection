@@ -177,7 +177,7 @@ const logListLoading = ref(false)
 
 // 用户管理
 const userSearchKeyword = ref('')
-const userList = ref([])
+const userList = ref<User[]>([])
 const userPagination = reactive({
   current: 1,
   pageSize: 10,
@@ -225,7 +225,17 @@ const userColumns = [
 const userModalVisible = ref(false)
 const userModalTitle = ref('')
 const userFormRef = ref()
-const userForm = reactive({
+// 用户表单数据类型定义
+interface UserForm {
+  id: number | null
+  name: string
+  account: string
+  password: string
+  password_confirmation: string
+  role: 'admin' | 'user'
+}
+
+const userForm = reactive<UserForm>({
   id: null,
   name: '',
   account: '',
@@ -263,9 +273,17 @@ const userFormRules = {
   ]
 }
 
+// 日志数据类型定义
+interface LogEntry {
+  timestamp: string
+  level: string
+  message: string
+  user: string
+}
+
 // 系统日志
 const logLevel = ref('all')
-const logList = ref([])
+const logList = ref<LogEntry[]>([])
 const logPagination = reactive({
   current: 1,
   pageSize: 10,
@@ -519,7 +537,7 @@ const handleRefreshLogs = () => {
  * 获取日志级别颜色
  */
 const getLogLevelColor = (level: string) => {
-  const colors = {
+  const colors: Record<string, string> = {
     info: 'blue',
     warning: 'orange',
     error: 'red'

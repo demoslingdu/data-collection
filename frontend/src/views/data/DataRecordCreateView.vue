@@ -208,6 +208,19 @@ import {
   IconLeft
 } from '@arco-design/web-vue/es/icon'
 
+// 附件文件类型定义
+interface AttachmentFile {
+  uid: string
+  name: string
+  size?: number
+  type?: string
+  status?: 'init' | 'uploading' | 'done' | 'error'
+  percent?: number
+  response?: any
+  url?: string
+  file?: File
+}
+
 // 路由实例
 const router = useRouter()
 
@@ -219,8 +232,22 @@ const uploadRef = ref()
 const submitting = ref(false)
 const savingDraft = ref(false)
 
+// 表单数据类型定义
+interface FormData {
+  title: string
+  status: string
+  category: string
+  priority: string
+  content: string
+  start_date: string
+  end_date: string
+  tags: string[]
+  attachments: AttachmentFile[]
+  remarks: string
+}
+
 // 表单数据
-const formData = reactive({
+const formData = reactive<FormData>({
   title: '',
   status: 'pending',
   category: '',
@@ -259,7 +286,7 @@ const formRules = {
 /**
  * 处理文件上传变化
  */
-const handleFileChange = (fileList: any[]) => {
+const handleFileChange = (fileList: AttachmentFile[]) => {
   formData.attachments = fileList
 }
 

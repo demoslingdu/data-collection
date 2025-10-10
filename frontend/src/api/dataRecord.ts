@@ -8,21 +8,37 @@ import type { ApiResponse } from './auth'
 export interface DataRecord {
   id: number
   title: string
-  description: string
+  description?: string
+  content?: string
   platform: 'taobao' | 'tmall' | 'jd' | 'pdd' | 'douyin' | 'kuaishou' | 'xiaohongshu' | 'other'
-  url: string
+  platform_id?: string
+  url?: string
   price?: number
   quantity?: number
   contact_info?: string
   notes?: string
+  phone?: string
+  image_url?: string
   status: 'unclaimed' | 'claimed' | 'completed'
   submitter_id: number
-  claimer_id?: number
-  submitted_at: string
+  claimer_id?: number | null
+  submitted_at?: string
   claimed_at?: string
   completed_at?: string
   created_at: string
   updated_at: string
+  // 添加前端需要的状态属性
+  is_claimed?: boolean
+  is_completed?: boolean
+  is_duplicate?: boolean
+  // 添加详情页面需要的属性
+  category?: string
+  priority?: string
+  start_date?: string
+  end_date?: string
+  tags?: string[]
+  attachments?: any[]
+  remarks?: string
   submitter?: {
     id: number
     name: string
@@ -32,7 +48,7 @@ export interface DataRecord {
     id: number
     name: string
     email: string
-  }
+  } | null
 }
 
 // 数据记录创建数据
