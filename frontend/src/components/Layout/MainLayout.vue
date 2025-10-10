@@ -40,7 +40,7 @@
           数据记录
         </a-menu-item>
 
-        <a-menu-item key="profile">
+        <a-menu-item v-if="isAdmin" key="profile">
           <template #icon>
             <icon-user />
           </template>
