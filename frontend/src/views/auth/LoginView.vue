@@ -51,13 +51,6 @@
           </a-button>
         </a-form-item>
       </a-form>
-      
-      <div class="login-footer">
-        <p>
-          还没有账户？
-          <router-link to="/register">立即注册</router-link>
-        </p>
-      </div>
     </div>
   </div>
 </template>
@@ -165,24 +158,6 @@ const handleLogin = async ({ errors }: { errors: any }) => {
 }
 
 .login-form {
-  margin-bottom: 24px;
-}
-
-.login-footer {
-  text-align: center;
-}
-
-.login-footer p {
-  color: #86909c;
-  font-size: 14px;
-}
-
-.login-footer a {
-  color: #1890ff;
-  font-weight: 500;
-}
-
-.login-footer a:hover {
-  text-decoration: underline;
+  margin-bottom: 0;
 }
 </style>
