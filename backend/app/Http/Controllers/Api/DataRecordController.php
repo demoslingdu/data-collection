@@ -361,7 +361,7 @@ class DataRecordController extends Controller
                 return ApiResponse::notFound('数据记录不存在');
             }
 
-            // 检查权限：只有领取者可以标记完成
+            // 检查权限：只有领取者可以已通过
             if ($record->claimer_id !== Auth::id()) {
                 return ApiResponse::forbidden('您没有权限完成此记录');
             }
@@ -460,6 +460,59 @@ class DataRecordController extends Controller
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取统计信息失败', $e->getMessage());
+        }
+    }
+
+    /**
+     * 获取未领取的数据记录列表
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function unclaimed(Request $request): JsonResponse
+    {
+        try {
+            $query = DataRecord::with(['submitter'])
+                ->where('is_claimed', false)
+                ->where('is_duplicate', false)
+                ->orderBy('created_at', 'desc');
+
+            // 分页
+            $perPage = $request->get('per_page', 15);
+            $records = $query->paginate($perPage);
+
+            return ApiResponse::paginated($records, '获取未领取数据记录列表成功');
+
+        } catch (\Exception $e) {
+            return ApiResponse::serverError('获取未领取数据记录列表失败', $e->getMessage());
+        }
+    }
+
+    /**
+     * 获取当前用户已领取但未完成的数据记录列表
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function myClaimed(Request $request): JsonResponse
+    {
+        try {
+            $userId = Auth::id();
+            
+            $query = DataRecord::with(['submitter'])
+                ->where('claimer_id', $userId)
+                ->where('is_claimed', true)
+                ->where('is_completed', false)
+                ->orderBy('created_at', 'desc');
+
+            // 分页
+            $perPage = $request->get('per_page', 15);
+            $records = $query->paginate($perPage);
+
+            return ApiResponse::paginated($records, '获取我已领取未完成数据记录列表成功');
+
+        } catch (\Exception $e) {
+            return ApiResponse::serverError('获取我已领取未完成数据记录列表失败', $e->getMessage());
         }
     }
 }

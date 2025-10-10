@@ -14,7 +14,7 @@
                 <icon-edit />
               </template>
               编辑
-            </a-button>
+            </a-button>数据记录
             <a-popconfirm
               content="确定要删除这条记录吗？"
               @ok="handleDelete"

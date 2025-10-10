@@ -35,6 +35,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [DataRecordController::class, 'index']);           // 获取列表
         Route::post('/', [DataRecordController::class, 'store']);          // 创建记录
         Route::get('statistics', [DataRecordController::class, 'statistics']); // 获取统计信息
+        Route::get('unclaimed', [DataRecordController::class, 'unclaimed']); // 获取未领取的数据记录
+        Route::get('my-claimed', [DataRecordController::class, 'myClaimed']); // 获取我已领取但未完成的数据记录
         Route::get('{id}', [DataRecordController::class, 'show']);         // 获取详情
         Route::put('{id}', [DataRecordController::class, 'update']);       // 更新记录
         Route::delete('{id}', [DataRecordController::class, 'destroy']);   // 删除记录

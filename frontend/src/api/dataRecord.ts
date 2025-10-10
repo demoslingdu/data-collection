@@ -142,15 +142,28 @@ export const completeDataRecord = (id: number): Promise<ApiResponse<DataRecord>>
 }
 
 /**
- * 获取统计数据
+ * 获取统计信息
  */
 export const getStatistics = (): Promise<ApiResponse<Statistics>> => {
   return apiClient.get('/data-records/statistics')
 }
 
 /**
- * 数据记录 API 对象
- * 为了兼容现有代码，将所有 API 函数组织成一个对象
+ * 获取未领取的数据记录列表
+ */
+export const getUnclaimedRecords = (params?: DataRecordQuery): Promise<ApiResponse<PaginatedResponse<DataRecord>>> => {
+  return apiClient.get('/data-records/unclaimed', { params })
+}
+
+/**
+ * 获取我已领取但未完成的数据记录列表
+ */
+export const getMyClaimedRecords = (params?: DataRecordQuery): Promise<ApiResponse<PaginatedResponse<DataRecord>>> => {
+  return apiClient.get('/data-records/my-claimed', { params })
+}
+
+/**
+ * 导出数据记录 API
  */
 export const dataRecordApi = {
   getList: getDataRecords,
@@ -160,5 +173,7 @@ export const dataRecordApi = {
   deleteDataRecord,
   claimDataRecord,
   completeDataRecord,
-  getStatistics
+  getStatistics,
+  getUnclaimedRecords,
+  getMyClaimedRecords
 }

@@ -94,7 +94,7 @@
         v-model:selectedKeys="selectedRowKeys"
         @page-change="handlePageChange"
         @page-size-change="handlePageSizeChange"
-        :scroll="{ x: 1400, y: 600 }"
+        :scroll="{ x: 1520, y: 600 }"
         stripe
         hoverable
         size="large"
@@ -127,6 +127,14 @@
         </template>
         <template #claimer="{ record }">
           {{ record.claimer?.name || '未分配' }}
+        </template>
+        <template #phone="{ record }">
+          <span v-if="record.phone" class="phone-display">
+            {{ record.phone }}
+          </span>
+          <span v-else class="phone-empty">
+            未填写
+          </span>
         </template>
         <template #is_duplicate="{ record }">
           <a-tag :color="record.is_duplicate ? 'red' : 'green'">
@@ -266,6 +274,13 @@ const columns = [
     tooltip: true
   },
   {
+    title: '手机号',
+    dataIndex: 'phone',
+    slotName: 'phone',
+    width: 120,
+    align: 'center'
+  },
+  {
     title: '是否领取',
     dataIndex: 'is_claimed',
     slotName: 'is_claimed',
@@ -333,6 +348,8 @@ const getPlatformText = (platform: string): string => {
   }
   return platformMap[platform] || platform
 }
+
+
 
 /**
  * 处理搜索
@@ -473,10 +490,10 @@ const handleComplete = async (record: DataRecord) => {
       // 更新本地数据状态
       record.is_completed = true
       
-      Message.success('标记完成成功')
+      Message.success('已通过成功')
     }
   } catch (error: any) {
-    console.error('标记完成失败:', error)
+    console.error('已通过失败:', error)
     
     // 处理不同类型的错误
     if (error.response?.data?.message) {
@@ -485,7 +502,7 @@ const handleComplete = async (record: DataRecord) => {
       const errorMessages = Object.values(error.response.data.errors).flat()
       Message.error(errorMessages[0] as string)
     } else {
-      Message.error('标记完成失败，请稍后重试')
+      Message.error('已通过失败，请稍后重试')
     }
   } finally {
     // 清除加载状态
@@ -604,6 +621,18 @@ onMounted(() => {
 
 .table-card :deep(.arco-table-td) {
   padding: 12px 16px;
+}
+
+/* 手机号显示样式 */
+.phone-display {
+  font-family: 'Courier New', monospace;
+  color: #1d2129;
+  font-weight: 500;
+}
+
+.phone-empty {
+  color: #86909c;
+  font-style: italic;
 }
 
 /* 响应式设计 */

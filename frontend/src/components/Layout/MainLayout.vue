@@ -33,7 +33,7 @@
           仪表板
         </a-menu-item>
 
-        <a-menu-item key="data-records">
+        <a-menu-item  v-if="isAdmin" key="data-records">
           <template #icon>
             <icon-file />
           </template>
