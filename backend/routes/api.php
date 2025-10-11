@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DataRecordController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ImageController;
+use App\Http\Controllers\Api\StatisticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -65,5 +66,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('batch', [UserController::class, 'batchDestroy']);   // 批量删除用户
         Route::put('{id}/reset-password', [UserController::class, 'resetPassword']); // 重置密码
         Route::put('{id}/toggle-role', [UserController::class, 'toggleRole']); // 切换角色
+    });
+
+    // 统计数据相关（仅管理员可访问）
+    Route::middleware('admin')->prefix('statistics')->group(function () {
+        Route::get('claims', [StatisticsController::class, 'claimStatistics']);      // 获取领取统计
+        Route::get('collections', [StatisticsController::class, 'collectionStatistics']); // 获取收集统计
     });
 });
