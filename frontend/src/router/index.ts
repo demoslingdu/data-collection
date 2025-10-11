@@ -61,6 +61,18 @@ const router = createRouter({
           name: 'admin',
           component: () => import('@/views/admin/AdminView.vue'),
           meta: { requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: 'admin/claim-statistics',
+          name: 'claim-statistics',
+          component: () => import('@/views/admin/ClaimStatisticsView.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: 'admin/collection-statistics',
+          name: 'collection-statistics',
+          component: () => import('@/views/admin/CollectionStatisticsView.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true }
         }
       ]
     },

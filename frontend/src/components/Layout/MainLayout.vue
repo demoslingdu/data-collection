@@ -54,6 +54,26 @@
           </template>
           管理员控制台
         </a-menu-item>
+
+        <!-- 数据统计子菜单 -->
+        <a-sub-menu v-if="isAdmin" key="statistics">
+          <template #icon>
+            <icon-bar-chart />
+          </template>
+          <template #title>数据统计</template>
+          <a-menu-item key="claim-statistics">
+            <template #icon>
+              <icon-check-circle />
+            </template>
+            领取统计
+          </a-menu-item>
+          <a-menu-item key="collection-statistics">
+            <template #icon>
+              <icon-bar-chart />
+            </template>
+            收集统计
+          </a-menu-item>
+        </a-sub-menu>
       </a-menu>
     </a-layout-sider>
 
@@ -123,15 +143,18 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Message } from '@arco-design/web-vue'
 import {
-  IconStorage,
   IconDashboard,
   IconFile,
   IconUser,
+  IconStorage,
+  IconPoweroff,
   IconSettings,
   IconMenuFold,
   IconMenuUnfold,
   IconDown,
-  IconExport
+  IconExport,
+  IconBarChart,
+  IconCheckCircle
 } from '@arco-design/web-vue/es/icon'
 
 const router = useRouter()
@@ -154,7 +177,9 @@ const pageTitleMap: Record<string, string> = {
   'data-record-create': '新建数据记录',
   'data-record-detail': '数据记录详情',
   profile: '个人资料',
-  admin: '管理员控制台'
+  admin: '管理员控制台',
+  'claim-statistics': '领取统计',
+  'collection-statistics': '收集统计'
 }
 
 // 当前页面标题
@@ -178,7 +203,9 @@ const handleMenuClick = (key: string) => {
     dashboard: '/dashboard',
     'data-records': '/data-records',
     profile: '/profile',
-    admin: '/admin'
+    admin: '/admin',
+    'claim-statistics': '/admin/claim-statistics',
+    'collection-statistics': '/admin/collection-statistics'
   }
 
   const path = routeMap[key]
@@ -217,6 +244,8 @@ watch(
       '/data-records': 'data-records',
       '/data': 'data-records',
       '/profile': 'profile',
+      '/admin/claim-statistics': 'claim-statistics',
+      '/admin/collection-statistics': 'collection-statistics',
       '/admin': 'admin'
     }
 
@@ -231,6 +260,10 @@ watch(
 
     if (matchedKey) {
       selectedKeys.value = [matchedKey]
+      // 如果是统计页面，需要展开统计子菜单
+      if (matchedKey === 'claim-statistics' || matchedKey === 'collection-statistics') {
+        defaultOpenKeys.value = ['statistics']
+      }
     }
   },
   { immediate: true }
