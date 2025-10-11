@@ -100,6 +100,9 @@
           <template #platform="{ record }">
             {{ getPlatformText(record.platform) }}
           </template>
+          <template #phone="{ record }">
+            {{ record.phone || '-' }}
+          </template>
           <template #submitter="{ record }">
             {{ record.submitter?.name || '未知' }}
           </template>
@@ -245,6 +248,15 @@ const myClaimedColumns = [
     title: '平台ID',
     dataIndex: 'platform_id',
     width: 120,
+    ellipsis: true,
+    tooltip: true
+  },
+  {
+    title: '手机号',
+    dataIndex: 'phone',
+    slotName: 'phone',
+    width: 120,
+    align: 'center',
     ellipsis: true,
     tooltip: true
   },
