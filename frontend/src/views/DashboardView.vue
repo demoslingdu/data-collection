@@ -33,8 +33,8 @@
               width="40"
               height="40"
               fit="cover"
-              :preview="true"
-              style="border-radius: 4px; cursor: pointer;"
+              :preview="false"
+              style="border-radius: 4px;"
             />
             <span v-else class="no-image">无图片</span>
           </template>
