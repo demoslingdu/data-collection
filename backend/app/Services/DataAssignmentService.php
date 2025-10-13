@@ -326,16 +326,6 @@ class DataAssignmentService
     }
 
     /**
-     * 检查数据记录是否已分发给公司
-     */
-    public function isAssignedToCompany(int $dataRecordId, int $companyId): bool
-    {
-        return DataRecordAssignment::where('data_record_id', $dataRecordId)
-            ->where('company_id', $companyId)
-            ->exists();
-    }
-
-    /**
      * 获取公司的分发统计
      */
     public function getCompanyAssignmentStats(int $companyId, array $filters = []): array
