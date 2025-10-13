@@ -4,27 +4,22 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Illuminate\Support\Facades\Storage;
 
-/**
- * 图片控制器
- * 处理图片访问请求并设置CORS头部
- */
 class ImageController extends Controller
 {
     /**
-     * 显示指定的图片文件
+     * 显示指定的图片
      * 
      * @param Request $request
-     * @param string $path 图片路径
-     * @return BinaryFileResponse|Response
+     * @param string $path
+     * @return Response
      */
     public function show(Request $request, $path)
     {
         // 记录请求信息
-        Log::info('Image request received', [
+        Log::info('ImageController show method called', [
             'method' => $request->method(),
             'path' => $path,
             'origin' => $request->header('Origin'),
@@ -33,60 +28,72 @@ class ImageController extends Controller
             'timestamp' => now()->toDateTimeString()
         ]);
 
-        // 设置完整的CORS头部
-        $corsHeaders = [
-            'Access-Control-Allow-Origin' => 'https://collect.wlai.vip',
-            'Access-Control-Allow-Methods' => 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers' => '*',
-            'Access-Control-Allow-Credentials' => 'true',
-            'Access-Control-Max-Age' => '86400',
-        ];
-
-        // 处理OPTIONS预检请求
-        if ($request->isMethod('OPTIONS')) {
-            Log::info('Handling OPTIONS preflight request', ['path' => $path]);
-            return response('', 200)
-                ->header('Access-Control-Allow-Origin', 'https://collect.wlai.vip')
-                ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-                ->header('Access-Control-Allow-Headers', '*')
-                ->header('Access-Control-Allow-Credentials', 'true')
-                ->header('Access-Control-Max-Age', '86400')
-                ->header('Content-Type', 'text/plain')
-                ->header('Content-Length', '0');
+        // 处理 OPTIONS 预检请求
+        if ($request->method() === 'OPTIONS') {
+            Log::info('Handling OPTIONS preflight request');
+            return $this->createCorsResponse('', 200);
         }
 
-        // 构建完整的文件路径
-        $fullPath = public_path('images/' . $path);
-        
-        Log::info('Checking file existence', [
-            'path' => $path,
-            'full_path' => $fullPath,
-            'exists' => file_exists($fullPath)
-        ]);
+        // 构建图片文件路径
+        $imagePath = public_path('images/' . $path);
         
         // 检查文件是否存在
-        if (!file_exists($fullPath)) {
-            Log::warning('File not found', ['path' => $path, 'full_path' => $fullPath]);
-            return response('File not found', 404, $corsHeaders);
+        if (!file_exists($imagePath)) {
+            Log::warning('Image file not found', ['path' => $imagePath]);
+            return $this->createCorsResponse('Image not found', 404);
         }
 
-        // 获取文件的MIME类型
-        $mimeType = mime_content_type($fullPath);
+        // 获取文件内容和MIME类型
+        $fileContent = file_get_contents($imagePath);
+        $mimeType = mime_content_type($imagePath);
         
-        // 读取文件内容
-        $fileContent = file_get_contents($fullPath);
-        
-        // 创建响应并设置所有头部
-        $response = response($fileContent, 200, array_merge([
+        Log::info('Returning image response', [
+            'path' => $imagePath,
+            'mime_type' => $mimeType,
+            'size' => strlen($fileContent)
+        ]);
+
+        // 创建响应并设置CORS头部
+        $response = response($fileContent, 200, [
             'Content-Type' => $mimeType,
             'Content-Length' => strlen($fileContent),
-        ], $corsHeaders));
+        ]);
 
-        Log::info('Returning image response', [
-            'path' => $path,
-            'mime_type' => $mimeType,
-            'file_size' => strlen($fileContent),
-            'cors_headers' => $corsHeaders
+        // 手动设置CORS头部
+        $response->header('Access-Control-Allow-Origin', 'https://collect.wlai.vip');
+        $response->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        $response->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+        $response->header('Access-Control-Allow-Credentials', 'true');
+        $response->header('Access-Control-Max-Age', '86400');
+
+        Log::info('CORS headers manually set on response');
+
+        return $response;
+    }
+
+    /**
+     * 创建带有CORS头部的响应
+     * 
+     * @param string $content
+     * @param int $status
+     * @param array $headers
+     * @return Response
+     */
+    private function createCorsResponse($content, $status, $headers = [])
+    {
+        // 创建响应
+        $response = response($content, $status, $headers);
+
+        // 手动设置CORS头部
+        $response->header('Access-Control-Allow-Origin', 'https://collect.wlai.vip');
+        $response->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        $response->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+        $response->header('Access-Control-Allow-Credentials', 'true');
+        $response->header('Access-Control-Max-Age', '86400');
+
+        Log::info('Creating CORS response', [
+            'status' => $status,
+            'cors_origin' => 'https://collect.wlai.vip'
         ]);
 
         return $response;

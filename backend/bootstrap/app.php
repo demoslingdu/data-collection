@@ -12,19 +12,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // 注册管理员中间件
+        // 注册中间件别名
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'image.cors' => \App\Http\Middleware\ImageCorsMiddleware::class,
         ]);
         
-        // 添加CORS中间件到全局中间件（优先级最高）
-        $middleware->web(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
+        // 移除全局CORS中间件，避免冲突
+        // $middleware->web(prepend: [
+        //     \Illuminate\Http\Middleware\HandleCors::class,
+        // ]);
         
-        $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
+        // $middleware->api(prepend: [
+        //     \Illuminate\Http\Middleware\HandleCors::class,
+        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

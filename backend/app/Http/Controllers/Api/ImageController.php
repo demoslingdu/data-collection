@@ -142,7 +142,7 @@ class ImageController extends Controller
         $image = $manager->read($file->getPathname());
 
         // 顺时针旋转90°（修复图片方向问题）
-        $image->rotate(-90);
+        //$image->rotate(-90);
 
         // 获取旋转后的图片信息
         $originalWidth = $image->width();

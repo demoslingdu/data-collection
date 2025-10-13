@@ -5,16 +5,10 @@
 
     RewriteEngine On
 
-    # CORS Headers for images directory
-    <IfModule mod_headers.c>
-        # Handle CORS for all image files
-        <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
-            Header always set Access-Control-Allow-Origin "https://collect.wlai.vip"
-            Header always set Access-Control-Allow-Methods "GET, OPTIONS"
-            Header always set Access-Control-Allow-Headers "*"
-            Header always set Access-Control-Allow-Credentials "true"
-        </FilesMatch>
-    </IfModule>
+    # Force ALL images requests to go through Laravel routing
+    # This must come BEFORE the general file existence check
+    RewriteCond %{REQUEST_URI} ^/images/
+    RewriteRule ^images/(.*)$ index.php [L,QSA]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -33,4 +27,15 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# Add CORS headers for images
+<IfModule mod_headers.c>
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+        Header always set Access-Control-Allow-Origin "https://collect.wlai.vip"
+        Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Origin, Accept"
+        Header always set Access-Control-Allow-Credentials "true"
+        Header always set Access-Control-Max-Age "86400"
+    </FilesMatch>
 </IfModule>
