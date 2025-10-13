@@ -38,9 +38,7 @@
             />
             <span v-else class="no-image">无图片</span>
           </template>
-          <template #platform="{ record }">
-            {{ getPlatformText(record.platform) }}
-          </template>
+
           <template #submitter="{ record }">
             {{ record.submitter?.name || '未知' }}
           </template>
@@ -89,9 +87,9 @@
             <a-image
               v-if="record.image_url"
               :src="record.image_url"
-              width="40"
-              height="40"
-              fit="cover"
+              width="150"
+              height="150"
+              fit="contain"
               :preview="true"
               style="border-radius: 4px; cursor: pointer;"
             />
@@ -101,10 +99,15 @@
             {{ getPlatformText(record.platform) }}
           </template>
           <template #phone="{ record }">
-            {{ record.phone || '-' }}
-          </template>
-          <template #submitter="{ record }">
-            {{ record.submitter?.name || '未知' }}
+            <span 
+              v-if="record.phone" 
+              class="phone-number clickable"
+              @click="copyToClipboard(record.phone)"
+              :title="`点击复制手机号: ${record.phone}`"
+            >
+              {{ record.phone }}
+            </span>
+            <span v-else class="phone-empty">-</span>
           </template>
           <template #actions="{ record }">
             <a-button 
@@ -177,7 +180,7 @@ const unclaimedColumns = [
     title: '图片',
     dataIndex: 'image_url',
     slotName: 'image',
-    width: 70,
+    width: 170,
     align: 'center'
   },
   {
@@ -227,50 +230,29 @@ const myClaimedColumns = [
   {
     title: 'ID',
     dataIndex: 'id',
-    width: 60,
+    width: 80,
     align: 'center'
   },
   {
     title: '图片',
     dataIndex: 'image_url',
     slotName: 'image',
-    width: 70,
-    align: 'center'
-  },
-  {
-    title: '平台',
-    dataIndex: 'platform',
-    slotName: 'platform',
     width: 80,
     align: 'center'
-  },
-  {
-    title: '平台ID',
-    dataIndex: 'platform_id',
-    width: 120,
-    ellipsis: true,
-    tooltip: true
   },
   {
     title: '手机号',
     dataIndex: 'phone',
     slotName: 'phone',
-    width: 120,
+    width: 180,
     align: 'center',
     ellipsis: true,
     tooltip: true
   },
   {
-    title: '提交人',
-    dataIndex: 'submitter',
-    slotName: 'submitter',
-    width: 100,
-    align: 'center'
-  },
-  {
     title: '领取时间',
     dataIndex: 'created_at',
-    width: 140,
+    width: 180,
     render: ({ record }: { record: DataRecord }) => {
       return new Date(record.created_at).toLocaleString('zh-CN', {
         month: '2-digit',
@@ -283,7 +265,7 @@ const myClaimedColumns = [
   {
     title: '操作',
     slotName: 'actions',
-    width: 100,
+    width: 120,
     align: 'center'
   }
 ]
@@ -488,6 +470,42 @@ const handleComplete = async (record: DataRecord) => {
   }
 }
 
+/**
+ * 复制文本到剪贴板
+ * @param text 要复制的文本
+ */
+const copyToClipboard = async (text: string) => {
+  try {
+    // 优先使用现代浏览器的 Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      Message.success(`手机号 ${text} 已复制到剪贴板`)
+    } else {
+      // 降级方案：使用传统的 document.execCommand
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      textArea.style.top = '-999999px'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      
+      const successful = document.execCommand('copy')
+      document.body.removeChild(textArea)
+      
+      if (successful) {
+        Message.success(`手机号 ${text} 已复制到剪贴板`)
+      } else {
+        throw new Error('复制失败')
+      }
+    }
+  } catch (err) {
+    console.error('复制失败:', err)
+    Message.error('复制失败，请手动复制')
+  }
+}
+
 // 组件挂载时获取数据
 onMounted(() => {
   loadUnclaimedData()
@@ -565,6 +583,33 @@ onMounted(() => {
 }
 
 .no-image {
+  color: #86909c;
+  font-size: 12px;
+}
+
+/* 手机号样式 */
+.phone-number.clickable {
+  color: #1890ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.phone-number.clickable:hover {
+  color: #40a9ff;
+  background-color: #e6f7ff;
+  transform: translateY(-1px);
+}
+
+.phone-number.clickable:active {
+  color: #096dd9;
+  background-color: #bae7ff;
+  transform: translateY(0);
+}
+
+.phone-empty {
   color: #86909c;
   font-size: 12px;
 }
