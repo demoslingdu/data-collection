@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\DataRecord;
+use App\Models\DataRecordAssignment;
 use App\Models\Company;
 use App\Services\DataAssignmentService;
 use Illuminate\Http\Request;
@@ -367,31 +368,51 @@ class DataRecordController extends Controller
      * @param int $id
      * @return JsonResponse
      */
+    /**
+     * 领取数据记录
+     * 基于新的数据分发系统，通过 DataAssignmentService 处理领取操作
+     *
+     * @param int $id 数据记录ID
+     * @return JsonResponse
+     */
     public function claim(int $id): JsonResponse
     {
         try {
+            $user = Auth::user();
+            
+            // 查找数据记录
             $record = DataRecord::find($id);
-
             if (!$record) {
                 return ApiResponse::notFound('数据记录不存在');
             }
 
-            // 检查是否已被领取
-            if ($record->is_claimed) {
-                return ApiResponse::validationError(['record' => ['该记录已被领取']]);
-            }
-
             // 检查是否是自己提交的记录
-            if ($record->submitter_id === Auth::id()) {
+            if ($record->submitter_id === $user->id) {
                 return ApiResponse::validationError(['record' => ['不能领取自己提交的记录']]);
             }
 
-            $record->update([
-                'is_claimed' => true,
-                'claimer_id' => Auth::id(),
-            ]);
+            // 查找当前用户公司的可领取分发记录
+            $assignment = DataRecordAssignment::where('data_record_id', $id)
+                ->where('company_id', $user->company_id)
+                ->where('is_claimed', false)
+                ->where(function ($query) use ($user) {
+                    // 可以领取的数据：assigned_to 为 null 或者 assigned_to 为当前用户
+                    $query->whereNull('assigned_to')->orWhere('assigned_to', $user->id);
+                })
+                ->first();
 
-            $record->load(['submitter', 'claimer']);
+            if (!$assignment) {
+                return ApiResponse::validationError(['record' => ['该记录不可领取或已被领取']]);
+            }
+
+            // 使用 DataAssignmentService 处理领取操作
+            $claimedAssignment = $this->assignmentService->claimAssignment($assignment, $user);
+
+            // 加载关联数据并返回兼容格式
+            $record->load(['submitter']);
+            $record->is_claimed = true;
+            $record->claimer_id = $user->id;
+            $record->claimer = $user;
 
             return ApiResponse::updated($record, '领取数据记录成功');
 
@@ -402,34 +423,42 @@ class DataRecordController extends Controller
 
     /**
      * 完成数据记录
+     * 基于新的数据分发系统，通过 DataAssignmentService 处理完成操作
      *
-     * @param int $id
+     * @param int $id 数据记录ID
      * @return JsonResponse
      */
     public function complete(int $id): JsonResponse
     {
         try {
+            $user = Auth::user();
+            
+            // 查找数据记录
             $record = DataRecord::find($id);
-
             if (!$record) {
                 return ApiResponse::notFound('数据记录不存在');
             }
 
-            // 检查权限：只有领取者可以已通过
-            if ($record->claimer_id !== Auth::id()) {
-                return ApiResponse::forbidden('您没有权限完成此记录');
+            // 查找当前用户已领取的分发记录
+            $assignment = DataRecordAssignment::where('data_record_id', $id)
+                ->where('assigned_to', $user->id)
+                ->where('is_claimed', true)
+                ->where('is_completed', false)
+                ->first();
+
+            if (!$assignment) {
+                return ApiResponse::validationError(['record' => ['该记录不存在或您无权完成此记录']]);
             }
 
-            // 检查是否已被领取
-            if (!$record->is_claimed) {
-                return ApiResponse::validationError(['record' => ['该记录尚未被领取']]);
-            }
+            // 使用 DataAssignmentService 处理完成操作
+            $completedAssignment = $this->assignmentService->completeAssignment($assignment, $user);
 
-            $record->update([
-                'is_completed' => true,
-            ]);
-
-            $record->load(['submitter', 'claimer']);
+            // 加载关联数据并返回兼容格式
+            $record->load(['submitter']);
+            $record->is_claimed = true;
+            $record->is_completed = true;
+            $record->claimer_id = $user->id;
+            $record->claimer = $user;
 
             return ApiResponse::updated($record, '完成数据记录成功');
 
