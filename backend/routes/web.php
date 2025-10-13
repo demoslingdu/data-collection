@@ -8,6 +8,10 @@ Route::get('/', function () {
 });
 
 // 图片访问路由，处理CORS问题
-Route::match(['GET', 'OPTIONS'], '/images/{path}', [ImageController::class, 'show'])
+Route::get('/images/{path}', [ImageController::class, 'show'])
     ->where('path', '.*')
     ->name('images.show');
+
+Route::options('/images/{path}', [ImageController::class, 'show'])
+    ->where('path', '.*')
+    ->name('images.options');
