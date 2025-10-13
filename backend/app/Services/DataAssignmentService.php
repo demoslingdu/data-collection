@@ -186,14 +186,23 @@ class DataAssignmentService
             throw new \Exception('该数据已被领取');
         }
 
-        if ($assignment->assigned_to !== $user->id) {
+        // 如果 assigned_to 为 null，表示任何公司内的用户都可以领取
+        // 如果 assigned_to 不为 null，则只有指定用户可以领取
+        if ($assignment->assigned_to !== null && $assignment->assigned_to !== $user->id) {
             throw new \Exception('您无权领取该数据');
         }
 
-        $assignment->update([
+        // 如果 assigned_to 为 null，则在领取时设置为当前用户
+        $updateData = [
             'is_claimed' => true,
             'claimed_at' => now(),
-        ]);
+        ];
+        
+        if ($assignment->assigned_to === null) {
+            $updateData['assigned_to'] = $user->id;
+        }
+
+        $assignment->update($updateData);
 
         return $assignment->fresh();
     }
@@ -228,9 +237,13 @@ class DataAssignmentService
      */
     public function getClaimableAssignments(User $user, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = DataRecordAssignment::with(['dataRecord', 'company', 'assignedBy'])
-            ->where('assigned_to', $user->id)
-            ->where('is_claimed', false);
+        $query = DataRecordAssignment::with(['dataRecord', 'company'])
+            ->where('company_id', $user->company_id)
+            ->where('is_claimed', false)
+            ->where(function ($q) use ($user) {
+                // 可以领取的数据：assigned_to 为 null 或者 assigned_to 为当前用户
+                $q->whereNull('assigned_to')->orWhere('assigned_to', $user->id);
+            });
 
         // 移除状态过滤（已删除status字段）
 

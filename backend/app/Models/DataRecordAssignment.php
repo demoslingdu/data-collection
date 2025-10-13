@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id 分发ID
  * @property int $data_record_id 数据记录ID
  * @property int $company_id 公司ID
- * @property int $assigned_to 领取人ID
+ * @property int|null $assigned_to 领取人ID（可为空）
  * @property \Carbon\Carbon $assigned_at 分发时间
  * @property bool $is_claimed 是否已领取
  * @property \Carbon\Carbon|null $claimed_at 领取时间
