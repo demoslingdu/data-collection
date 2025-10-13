@@ -6,6 +6,7 @@ export interface User {
   id: number
   name: string
   account: string
+  email?: string
   role: string
 }
 
@@ -15,26 +16,39 @@ export interface DataRecordAssignment {
   company_id: number
   assigned_to?: number
   assigned_at: string
+  status?: 'pending' | 'in_progress' | 'completed'
+  started_at?: string
+  completed_at?: string
+  notes?: string
   created_at: string
   updated_at: string
   data_record?: DataRecord
   company?: Company
   assigned_to_user?: User
+  assigned_by_user?: User
 }
 
 export interface DataAssignmentCreateRequest {
-  data_record_ids: number[]
-  company_id: number
+  data_record_id?: number
+  data_record_ids?: number[]
+  company_id?: number
   assigned_to?: number
+  notes?: string
 }
 
 export interface DataAssignmentUpdateRequest {
   assigned_to?: number
 }
 
+export interface UpdateDataAssignmentRequest {
+  status?: 'pending' | 'in_progress' | 'completed'
+  notes?: string
+}
+
 export interface BatchAssignRequest {
   data_record_ids: number[]
   company_ids: number[]
+  notes?: string
 }
 
 export interface DataAssignmentListResponse {
@@ -61,10 +75,14 @@ export interface DataAssignmentListParams {
   assigned_to?: number
   date_from?: string
   date_to?: string
+  status?: 'pending' | 'in_progress' | 'completed'
 }
 
 export interface AssignmentStatistics {
   total: number
+  completed: number
+  pending: number
+  in_progress: number
   by_company: Array<{
     company_id: number
     count: number
@@ -118,7 +136,7 @@ export const getDataAssignment = (id: number) => {
 /**
  * 更新分发状态
  */
-export const updateDataAssignment = (id: number, data: DataAssignmentUpdateRequest) => {
+export const updateDataAssignment = (id: number, data: UpdateDataAssignmentRequest) => {
   return request<DataAssignmentResponse>({
     url: `/data-assignments/${id}`,
     method: 'PUT',
@@ -139,7 +157,7 @@ export const deleteDataAssignment = (id: number) => {
 /**
  * 获取分发统计信息
  */
-export const getAssignmentStatistics = (params?: { date_from?: string; date_to?: string }) => {
+export const getAssignmentStatistics = (params?: { date_from?: string; date_to?: string; company_id?: number }) => {
   return request<{ success: boolean; data: AssignmentStatistics }>({
     url: '/data-assignments/statistics',
     method: 'GET',

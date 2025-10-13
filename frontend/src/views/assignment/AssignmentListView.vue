@@ -377,22 +377,23 @@ const showCreateModal = ref(false)
 const showBatchModal = ref(false)
 
 // 搜索表单
-const searchForm = reactive<DataAssignmentListParams>({
+const searchForm = reactive<DataAssignmentListParams & { dateRange?: string[] }>({
   page: 1,
   per_page: 20,
   status: undefined,
   company_id: undefined,
   assigned_to: undefined,
   date_from: undefined,
-  date_to: undefined
+  date_to: undefined,
+  dateRange: undefined
 })
 
 // 创建表单
 const createForm = reactive<DataAssignmentCreateRequest>({
   data_record_ids: [],
-  company_id: undefined,
+  company_id: 0,
   assigned_to: undefined,
-  notes: undefined
+  notes: ''
 })
 
 // 批量分发表单
@@ -486,9 +487,9 @@ const loadAssignments = async () => {
     }
     
     const response = await getDataAssignments(searchForm)
-    assignments.value = response.data.data
-    pagination.total = response.data.total
-    pagination.current = response.data.current_page
+    assignments.value = response.data.data.data
+    pagination.total = response.data.data.total
+    pagination.current = response.data.data.current_page
   } catch (error) {
     console.error('加载分发列表失败:', error)
     Message.error('加载分发列表失败')
@@ -500,7 +501,9 @@ const loadAssignments = async () => {
 const loadCompanies = async () => {
   try {
     const response = await getActiveCompanies()
-    companies.value = response.data
+    if (response.data.success && response.data.data) {
+      companies.value = response.data.data
+    }
   } catch (error) {
     console.error('加载公司列表失败:', error)
   }
@@ -512,10 +515,9 @@ const loadAvailableRecords = async (visible: boolean) => {
   try {
     recordsLoading.value = true
     const response = await getAvailableRecords({
-      page: 1,
       per_page: 100
     })
-    availableRecords.value = response.data.data
+    availableRecords.value = response.data.data.data
   } catch (error) {
     console.error('加载可用数据记录失败:', error)
   } finally {
@@ -559,7 +561,7 @@ const handlePageSizeChange = (pageSize: number) => {
 }
 
 const handleCreateAssignment = async () => {
-  if (!createForm.data_record_ids.length || !createForm.company_id) {
+  if (!createForm.data_record_ids?.length || !createForm.company_id || createForm.company_id === 0) {
     Message.error('请填写必填字段')
     return
   }

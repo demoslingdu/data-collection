@@ -300,6 +300,8 @@ interface CompanyStatistics extends Company {
   inProgressAssignments: number
   completedAssignments: number
   completionRate: number
+  status: 'active' | 'inactive'
+  createdAt: string
 }
 
 // 表格列配置
@@ -403,13 +405,13 @@ const loadCompanyStatistics = async () => {
 
     // 获取公司列表
     const companiesResponse = await getCompanies(params)
-    const companies = companiesResponse.data
+    const companies = companiesResponse.data.data.data
 
     // 为每个公司获取统计数据
     const statisticsPromises = companies.map(async (company: Company) => {
       try {
         const statsResponse = await getAssignmentStatistics({ company_id: company.id })
-        const stats = statsResponse.data
+        const stats = statsResponse.data.data
         
         const totalAssignments = stats.total || 0
         const completedAssignments = stats.completed || 0
@@ -423,7 +425,9 @@ const loadCompanyStatistics = async () => {
           pendingAssignments: stats.pending || 0,
           inProgressAssignments: stats.in_progress || 0,
           completedAssignments,
-          completionRate
+          completionRate,
+          status: company.is_active ? 'active' : 'inactive',
+          createdAt: company.created_at
         } as CompanyStatistics
       } catch (error) {
         console.error(`获取公司 ${company.name} 统计数据失败:`, error)
@@ -433,7 +437,9 @@ const loadCompanyStatistics = async () => {
           pendingAssignments: 0,
           inProgressAssignments: 0,
           completedAssignments: 0,
-          completionRate: 0
+          completionRate: 0,
+          status: company.is_active ? 'active' : 'inactive',
+          createdAt: company.created_at
         } as CompanyStatistics
       }
     })
@@ -442,7 +448,7 @@ const loadCompanyStatistics = async () => {
     tableData.value = statisticsData
 
     // 更新分页信息
-    pagination.total = companiesResponse.meta?.total || 0
+    pagination.total = companiesResponse.data.data.total || 0
 
     // 计算总体统计
     calculateOverallStats(statisticsData)

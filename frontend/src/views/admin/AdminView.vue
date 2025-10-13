@@ -587,10 +587,8 @@ const fetchCompanyList = async () => {
     const response = await getActiveCompanies()
     console.log('公司列表API响应:', response)
     
-    if (response.data) {
-      // getActiveCompanies 返回的数据结构是 { success: boolean; data: Company[] }
-      // 所以直接使用 response.data 而不是 response.data.data
-      companies.value = response.data
+    if (response.data.success && response.data.data) {
+      companies.value = response.data.data
       console.log('设置公司列表数据:', companies.value)
     }
   } catch (error) {

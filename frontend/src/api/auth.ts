@@ -22,7 +22,9 @@ export interface User {
   id: number
   name: string
   account: string
-  role: 'admin' | 'user'
+  role: 'admin' | 'user' | 'company_admin'
+  company_id?: number
+  email?: string
   created_at: string
   updated_at: string
 }

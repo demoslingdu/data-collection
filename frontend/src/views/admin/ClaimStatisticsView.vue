@@ -335,8 +335,8 @@ const loadStatistics = async () => {
 const loadCompanies = async () => {
   try {
     const response = await getActiveCompanies()
-    if (response.data) {
-      companies.value = response.data
+    if (response.data.success && response.data.data) {
+      companies.value = response.data.data
       // 默认选择当前用户的公司
       if (authStore.user?.company_id) {
         selectedCompanyId.value = authStore.user.company_id

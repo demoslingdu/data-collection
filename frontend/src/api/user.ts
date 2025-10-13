@@ -5,11 +5,12 @@ import apiClient from './index'
 import type { ApiResponse } from './auth'
 import type { Company } from './company'
 
-// 用户信息接口（移除邮箱字段，添加账号字段和公司字段）
+// 用户信息接口
 export interface User {
   id: number
   name: string
   account: string
+  email?: string
   role: 'admin' | 'user'
   company_id?: number
   company?: Company

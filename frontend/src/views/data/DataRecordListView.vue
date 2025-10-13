@@ -59,7 +59,7 @@
           </a-select>
         </a-form-item>
         <!-- 新增公司筛选 -->
-        <a-form-item label="分发公司" v-if="userStore.user?.role === 'admin'">
+        <a-form-item label="分发公司" v-if="authStore.user?.role === 'admin'">
           <a-select
             v-model="searchForm.company_id"
             placeholder="请选择公司"
@@ -113,7 +113,7 @@
     </a-card>
 
     <!-- 操作按钮区域 -->
-    <a-card class="action-card" v-if="userStore.user?.role === 'admin'">
+    <a-card class="action-card" v-if="authStore.user?.role === 'admin'">
       <a-space>
         <a-button 
           type="primary" 
@@ -245,7 +245,7 @@
             
             <!-- 新增分发按钮 -->
             <a-button 
-              v-if="userStore.user?.role === 'admin'"
+              v-if="authStore.user?.role === 'admin'"
               type="text" 
               size="mini" 
               @click="showSingleAssignModal(record)"
@@ -392,20 +392,20 @@ import {
   IconRefresh,
   IconSend
 } from '@arco-design/web-vue/es/icon'
-import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 import { dataRecordApi } from '@/api/dataRecord'
 import type { DataRecord } from '@/api/dataRecord'
 import { getActiveCompanies, type Company } from '@/api/company'
 import { 
   batchAssignData, 
   createDataAssignment,
-  type BatchAssignDataRequest,
-  type CreateDataAssignmentRequest
+  type BatchAssignRequest,
+  type DataAssignmentCreateRequest
 } from '@/api/dataAssignment'
 
 // 路由实例和用户状态
 const router = useRouter()
-const userStore = useUserStore()
+const authStore = useAuthStore()
 
 // 响应式数据
 const loading = ref(false)
@@ -436,18 +436,18 @@ const searchForm = reactive({
 })
 
 // 批量分发表单
-const batchAssignForm = reactive<BatchAssignDataRequest>({
+const batchAssignForm = reactive<BatchAssignRequest>({
   data_record_ids: [],
   company_ids: [],
   notes: undefined
 })
 
 // 单个分发表单
-const singleAssignForm = reactive<CreateDataAssignmentRequest>({
-  data_record_id: undefined,
-  company_id: undefined,
+const singleAssignForm = reactive<DataAssignmentCreateRequest>({
+  data_record_id: 0,
+  company_id: 0,
   assigned_to: undefined,
-  notes: undefined
+  notes: ''
 })
 
 // 分页配置
@@ -622,7 +622,9 @@ const getAssignmentStatusText = (status: string) => {
 const loadCompanies = async () => {
   try {
     const response = await getActiveCompanies()
-    companies.value = response.data
+    if (response.data.success && response.data.data) {
+      companies.value = response.data.data
+    }
   } catch (error) {
     console.error('加载公司列表失败:', error)
   }
@@ -634,9 +636,9 @@ const loadCompanies = async () => {
 const showSingleAssignModal = (record: DataRecord) => {
   currentRecord.value = record
   singleAssignForm.data_record_id = record.id
-  singleAssignForm.company_id = undefined
+  singleAssignForm.company_id = 0
   singleAssignForm.assigned_to = undefined
-  singleAssignForm.notes = undefined
+  singleAssignForm.notes = ''
   showSingleAssignModalVisible.value = true
 }
 
@@ -644,7 +646,7 @@ const showSingleAssignModal = (record: DataRecord) => {
  * 处理单个分发
  */
 const handleSingleAssign = async () => {
-  if (!singleAssignForm.data_record_id || !singleAssignForm.company_id) {
+  if (!singleAssignForm.data_record_id || !singleAssignForm.company_id || singleAssignForm.company_id === 0) {
     Message.error('请填写必填字段')
     return
   }

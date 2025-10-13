@@ -38,12 +38,12 @@
         <a-descriptions :column="2" bordered>
           <a-descriptions-item label="分发状态">
             <a-tag 
-              :color="getStatusColor(assignment.status)"
-              :bordered="false"
-              size="large"
-            >
-              {{ getStatusText(assignment.status) }}
-            </a-tag>
+                :color="getStatusColor(assignment.status || 'pending')"
+                :bordered="false"
+                size="large"
+              >
+                {{ getStatusText(assignment.status || 'pending') }}
+              </a-tag>
           </a-descriptions-item>
           
           <a-descriptions-item label="分发公司">
@@ -154,7 +154,7 @@
             <h4>原始链接</h4>
             <a :href="assignment.data_record.url" target="_blank" class="record-url">
               {{ assignment.data_record.url }}
-              <icon-external />
+              <icon-link />
             </a>
           </div>
         </div>
@@ -250,9 +250,9 @@ import {
   IconClockCircle, 
   IconPlayCircle, 
   IconCheckCircle,
-  IconExternal
+  IconLink
 } from '@arco-design/web-vue/es/icon'
-import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 import { 
   getDataAssignment, 
   updateDataAssignment,
@@ -262,7 +262,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
+const authStore = useAuthStore()
 
 // 响应式数据
 const loading = ref(false)
@@ -279,7 +279,7 @@ const editForm = reactive<UpdateDataAssignmentRequest>({
 
 // 计算属性
 const canEdit = computed(() => {
-  const user = userStore.user
+  const user = authStore.user
   if (!user || !assignment.value) return false
   
   // 管理员可以编辑所有分发
@@ -301,11 +301,11 @@ const loadAssignment = async () => {
   try {
     loading.value = true
     const response = await getDataAssignment(assignmentId.value)
-    assignment.value = response
+    assignment.value = response.data.data
     
     // 初始化编辑表单
-    editForm.status = response.status
-    editForm.notes = response.notes
+    editForm.status = response.data.data.status || 'pending'
+    editForm.notes = response.data.data.notes || ''
   } catch (error) {
     console.error('加载分发详情失败:', error)
     Message.error('加载分发详情失败')
