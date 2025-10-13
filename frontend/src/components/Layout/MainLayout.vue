@@ -89,12 +89,7 @@
             </template>
             收集统计
           </a-menu-item>
-          <a-menu-item key="company-statistics">
-            <template #icon>
-              <icon-bar-chart />
-            </template>
-            公司统计
-          </a-menu-item>
+
         </a-sub-menu>
       </a-menu>
     </a-layout-sider>
@@ -206,8 +201,7 @@ const pageTitleMap: Record<string, string> = {
   profile: '个人资料',
   admin: '管理员控制台',
   'claim-statistics': '领取统计',
-  'collection-statistics': '收集统计',
-  'company-statistics': '公司统计'
+  'collection-statistics': '收集统计'
 }
 
 // 当前页面标题
@@ -235,8 +229,7 @@ const handleMenuClick = (key: string) => {
     profile: '/profile',
     admin: '/admin',
     'claim-statistics': '/admin/claim-statistics',
-    'collection-statistics': '/admin/collection-statistics',
-    'company-statistics': '/admin/company-statistics'
+    'collection-statistics': '/admin/collection-statistics'
   }
 
   const path = routeMap[key]
@@ -279,7 +272,6 @@ watch(
       '/profile': 'profile',
       '/admin/claim-statistics': 'claim-statistics',
       '/admin/collection-statistics': 'collection-statistics',
-      '/admin/company-statistics': 'company-statistics',
       '/admin': 'admin'
     }
 
@@ -295,7 +287,7 @@ watch(
     if (matchedKey) {
       selectedKeys.value = [matchedKey]
       // 如果是统计页面，需要展开统计子菜单
-      if (matchedKey === 'claim-statistics' || matchedKey === 'collection-statistics' || matchedKey === 'company-statistics') {
+      if (matchedKey === 'claim-statistics' || matchedKey === 'collection-statistics') {
         defaultOpenKeys.value = ['statistics']
       }
     }

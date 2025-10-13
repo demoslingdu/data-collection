@@ -93,13 +93,6 @@ const router = createRouter({
           name: 'collection-statistics',
           component: () => import('@/views/admin/CollectionStatisticsView.vue'),
           meta: { requiresAuth: true, requiresAdmin: true }
-        },
-        // 新增多公司统计报表路由
-        {
-          path: 'admin/company-statistics',
-          name: 'company-statistics',
-          component: () => import('@/views/admin/CompanyStatisticsView.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true }
         }
       ]
     },
