@@ -50,6 +50,16 @@ export interface CompanyListParams {
 }
 
 /**
+ * 获取启用公司列表的响应接口
+ */
+export interface ActiveCompaniesResponse {
+  success: boolean
+  code: number
+  message: string
+  data: Company[]
+}
+
+/**
  * 获取公司列表
  */
 export const getCompanies = (params?: CompanyListParams) => {
@@ -63,8 +73,8 @@ export const getCompanies = (params?: CompanyListParams) => {
 /**
  * 获取启用的公司列表（用于下拉选择）
  */
-export const getActiveCompanies = () => {
-  return request<{ success: boolean; data: Company[] }>({
+export const getActiveCompanies = (): Promise<ActiveCompaniesResponse> => {
+  return request<ActiveCompaniesResponse>({
     url: '/companies/active',
     method: 'GET'
   })

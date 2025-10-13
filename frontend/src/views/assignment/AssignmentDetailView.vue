@@ -301,11 +301,11 @@ const loadAssignment = async () => {
   try {
     loading.value = true
     const response = await getDataAssignment(assignmentId.value)
-    assignment.value = response.data.data
+    assignment.value = response.data
     
     // 初始化编辑表单
-    editForm.status = response.data.data.status || 'pending'
-    editForm.notes = response.data.data.notes || ''
+    editForm.status = response.data.status || 'pending'
+    editForm.notes = response.data.notes || ''
   } catch (error) {
     console.error('加载分发详情失败:', error)
     Message.error('加载分发详情失败')

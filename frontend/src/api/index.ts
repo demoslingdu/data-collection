@@ -53,7 +53,9 @@ apiClient.interceptors.response.use(
   }
 )
 
-// 导出 request 函数供其他模块使用
-export const request = apiClient
+// 创建自定义 request 函数，正确处理拦截器返回的类型
+export const request = <T = any>(config: AxiosRequestConfig): Promise<T> => {
+  return apiClient(config)
+}
 
 export default apiClient

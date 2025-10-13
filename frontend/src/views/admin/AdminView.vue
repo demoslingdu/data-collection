@@ -586,10 +586,15 @@ const fetchCompanyList = async () => {
     console.log('开始获取公司列表...')
     const response = await getActiveCompanies()
     console.log('公司列表API响应:', response)
+    console.log('response.success:', response.success)
+    console.log('response.data:', response.data)
     
-    if (response.data.success && response.data.data) {
-      companies.value = response.data.data
+    if (response.success && response.data) {
+      companies.value = response.data
       console.log('设置公司列表数据:', companies.value)
+      console.log('公司列表长度:', companies.value.length)
+    } else {
+      console.warn('API响应格式不正确或数据为空:', response)
     }
   } catch (error) {
     console.error('获取公司列表失败:', error)

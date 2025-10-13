@@ -487,9 +487,9 @@ const loadAssignments = async () => {
     }
     
     const response = await getDataAssignments(searchForm)
-    assignments.value = response.data.data.data
-    pagination.total = response.data.data.total
-    pagination.current = response.data.data.current_page
+    assignments.value = response.data.data
+    pagination.total = response.data.total
+    pagination.current = response.data.current_page
   } catch (error) {
     console.error('加载分发列表失败:', error)
     Message.error('加载分发列表失败')
@@ -501,8 +501,8 @@ const loadAssignments = async () => {
 const loadCompanies = async () => {
   try {
     const response = await getActiveCompanies()
-    if (response.data.success && response.data.data) {
-      companies.value = response.data.data
+    if (response.success && response.data) {
+      companies.value = response.data
     }
   } catch (error) {
     console.error('加载公司列表失败:', error)
@@ -517,7 +517,7 @@ const loadAvailableRecords = async (visible: boolean) => {
     const response = await getAvailableRecords({
       per_page: 100
     })
-    availableRecords.value = response.data.data.data
+    availableRecords.value = response.data.data
   } catch (error) {
     console.error('加载可用数据记录失败:', error)
   } finally {

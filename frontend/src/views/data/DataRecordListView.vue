@@ -622,8 +622,8 @@ const getAssignmentStatusText = (status: string) => {
 const loadCompanies = async () => {
   try {
     const response = await getActiveCompanies()
-    if (response.data.success && response.data.data) {
-      companies.value = response.data.data
+    if (response.success && response.data) {
+      companies.value = response.data
     }
   } catch (error) {
     console.error('加载公司列表失败:', error)

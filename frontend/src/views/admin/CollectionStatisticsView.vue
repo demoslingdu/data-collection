@@ -391,14 +391,23 @@ const loadStatistics = async () => {
  */
 const loadCompanies = async () => {
   try {
+    console.log('开始加载公司列表...')
     const response = await getActiveCompanies()
-    if (response.data.success && response.data.data) {
-      companies.value = response.data.data
+    console.log('API响应数据:', response)
+    console.log('response.success:', response.success)
+    console.log('response.data:', response.data)
+    
+    if (response.success && response.data) {
+      companies.value = response.data
+      console.log('公司列表已设置:', companies.value)
+    } else {
+      console.warn('API响应格式不正确或无数据:', response)
     }
     
     // 设置默认选择当前用户的公司
     if (authStore.user?.company_id) {
       selectedCompanyId.value = authStore.user.company_id
+      console.log('默认选择公司ID:', selectedCompanyId.value)
     }
   } catch (error) {
     console.error('加载公司列表失败:', error)

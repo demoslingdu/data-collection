@@ -312,10 +312,10 @@ const fetchCompanies = async () => {
     }
     
     const response = await getCompanies(params)
-    if (response.data.success) {
-      tableData.value = response.data.data.data
-      pagination.total = response.data.data.total
-      pagination.current = response.data.data.current_page
+    if (response.success) {
+      tableData.value = response.data.data
+      pagination.total = response.data.total
+      pagination.current = response.data.current_page
     }
   } catch (error) {
     console.error('获取公司列表失败:', error)
@@ -377,8 +377,8 @@ const handleEdit = (record: Company) => {
 const handleToggleStatus = async (record: Company) => {
   try {
     const response = await toggleCompanyStatus(record.id)
-    if (response.data.success) {
-      Message.success(response.data.message || '状态更新成功')
+    if (response.success) {
+      Message.success(response.message || '状态更新成功')
       fetchCompanies()
     }
   } catch (error) {
@@ -391,8 +391,8 @@ const handleToggleStatus = async (record: Company) => {
 const handleDelete = async (record: Company) => {
   try {
     const response = await deleteCompany(record.id)
-    if (response.data.success) {
-      Message.success(response.data.message || '删除成功')
+    if (response.success) {
+      Message.success(response.message || '删除成功')
       fetchCompanies()
     }
   } catch (error: any) {
@@ -420,8 +420,8 @@ const handleSubmit = async () => {
       console.log('执行更新操作...')
       const response = await updateCompany(currentId.value, form as CompanyUpdateRequest)
       console.log('更新响应:', response)
-      if (response.data.success) {
-        Message.success(response.data.message || '更新成功')
+      if (response.success) {
+        Message.success(response.message || '更新成功')
         modalVisible.value = false
         fetchCompanies()
       }
@@ -430,8 +430,8 @@ const handleSubmit = async () => {
       console.log('调用 createCompany API，参数:', form)
       const response = await createCompany(form)
       console.log('创建响应:', response)
-      if (response.data.success) {
-        Message.success(response.data.message || '创建成功')
+      if (response.success) {
+        Message.success(response.message || '创建成功')
         modalVisible.value = false
         fetchCompanies()
       }
