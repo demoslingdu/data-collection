@@ -7,19 +7,13 @@
 
     # CORS Headers for images directory
     <IfModule mod_headers.c>
-        # Handle CORS for images directory
+        # Handle CORS for all image files
         <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
-            SetEnvIf Origin "^https://collect\.wlai\.vip$" CORS_ORIGIN=$0
-            Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
-            Header always set Access-Control-Allow-Methods "GET, OPTIONS" env=CORS_ORIGIN
-            Header always set Access-Control-Allow-Headers "*" env=CORS_ORIGIN
-            Header always set Access-Control-Allow-Credentials "true" env=CORS_ORIGIN
+            Header always set Access-Control-Allow-Origin "https://collect.wlai.vip"
+            Header always set Access-Control-Allow-Methods "GET, OPTIONS"
+            Header always set Access-Control-Allow-Headers "*"
+            Header always set Access-Control-Allow-Credentials "true"
         </FilesMatch>
-        
-        # Handle preflight OPTIONS requests for images
-        RewriteCond %{REQUEST_METHOD} OPTIONS
-        RewriteCond %{REQUEST_URI} ^/images/
-        RewriteRule ^(.*)$ $1 [R=200,L]
     </IfModule>
 
     # Handle Authorization Header
