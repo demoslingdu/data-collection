@@ -16,8 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $status 处理状态
  * @property string|null $notes 备注信息
  * @property \Carbon\Carbon $assigned_at 分发时间
- * @property \Carbon\Carbon|null $started_at 开始处理时间
- * @property \Carbon\Carbon|null $completed_at 完成时间
+
  * @property bool $is_claimed 是否已领取
  * @property \Carbon\Carbon|null $claimed_at 领取时间
  * @property bool $is_completed 是否已完成
@@ -45,8 +44,6 @@ class DataRecordAssignment extends Model
         'status',
         'notes',
         'assigned_at',
-        'started_at',
-        'completed_at',
         'is_claimed',
         'claimed_at',
         'is_completed',
@@ -57,8 +54,6 @@ class DataRecordAssignment extends Model
      */
     protected $casts = [
         'assigned_at' => 'datetime',
-        'started_at' => 'datetime',
-        'completed_at' => 'datetime',
         'claimed_at' => 'datetime',
         'is_claimed' => 'boolean',
         'is_completed' => 'boolean',

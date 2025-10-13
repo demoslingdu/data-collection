@@ -184,11 +184,8 @@ class DataAssignmentService
             $updateData['assigned_to'] = $assignedTo;
         }
 
-        // 更新状态时间戳
-        if ($status === 'in_progress' && $assignment->status !== 'in_progress') {
-            $updateData['started_at'] = now();
-        } elseif ($status === 'completed' && $assignment->status !== 'completed') {
-            $updateData['completed_at'] = now();
+        // 更新状态时设置完成标记
+        if ($status === 'completed' && $assignment->status !== 'completed') {
             $updateData['is_completed'] = true;
         }
 
@@ -214,7 +211,6 @@ class DataAssignmentService
             'is_claimed' => true,
             'claimed_at' => now(),
             'status' => 'in_progress',
-            'started_at' => now(),
         ]);
 
         return $assignment->fresh();
@@ -240,7 +236,6 @@ class DataAssignmentService
 
         $assignment->update([
             'is_completed' => true,
-            'completed_at' => now(),
             'status' => 'completed',
             'notes' => $notes ?? $assignment->notes,
         ]);

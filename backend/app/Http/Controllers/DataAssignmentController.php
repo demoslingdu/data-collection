@@ -149,12 +149,10 @@ class DataAssignmentController extends Controller
             ], 403);
         }
 
-        // 更新状态时间戳
+        // 更新状态时设置完成标记
         $updateData = $validated;
-        if ($validated['status'] === 'in_progress' && $assignment->status !== 'in_progress') {
-            $updateData['started_at'] = now();
-        } elseif ($validated['status'] === 'completed' && $assignment->status !== 'completed') {
-            $updateData['completed_at'] = now();
+        if ($validated['status'] === 'completed' && $assignment->status !== 'completed') {
+            $updateData['is_completed'] = true;
         }
 
         $assignment->update($updateData);
