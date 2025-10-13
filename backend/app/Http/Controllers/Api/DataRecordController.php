@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\DataRecord;
+use App\Models\Company;
+use App\Services\DataAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 /**
  * 数据记录控制器
@@ -16,6 +20,22 @@ use Illuminate\Support\Facades\Auth;
  */
 class DataRecordController extends Controller
 {
+    /**
+     * 数据分发服务
+     *
+     * @var DataAssignmentService
+     */
+    protected DataAssignmentService $assignmentService;
+
+    /**
+     * 构造函数
+     *
+     * @param DataAssignmentService $assignmentService
+     */
+    public function __construct(DataAssignmentService $assignmentService)
+    {
+        $this->assignmentService = $assignmentService;
+    }
     /**
      * 获取数据记录列表
      *
@@ -116,16 +136,50 @@ class DataRecordController extends Controller
                 // 超过3天的算新客资，不标记重复（$isDuplicate 保持 false）
             }
 
-            $record = DataRecord::create([
-                'image_url' => $request->image_url,
-                'submitter_id' => Auth::id(),
-                'platform' => $request->platform,
-                'platform_id' => $request->platform_id,
-                'phone' => $request->phone,
-                'is_claimed' => false,
-                'is_completed' => false,
-                'is_duplicate' => $isDuplicate,
-            ]);
+            // 使用数据库事务确保数据一致性
+            $record = DB::transaction(function () use ($request, $isDuplicate) {
+                // 创建数据记录
+                $record = DataRecord::create([
+                    'image_url' => $request->image_url,
+                    'submitter_id' => Auth::id(),
+                    'platform' => $request->platform,
+                    'platform_id' => $request->platform_id,
+                    'phone' => $request->phone,
+                    'is_claimed' => false,
+                    'is_completed' => false,
+                    'is_duplicate' => $isDuplicate,
+                ]);
+
+                // 执行默认分发：将新记录分发给所有活跃公司
+                try {
+                    // 获取所有活跃公司的ID
+                    $activeCompanyIds = Company::active()->pluck('id')->toArray();
+                    
+                    if (!empty($activeCompanyIds)) {
+                        // 调用批量分发服务
+                        $this->assignmentService->batchAssign([$record->id], $activeCompanyIds);
+                        
+                        Log::info('数据记录默认分发成功', [
+                            'record_id' => $record->id,
+                            'company_count' => count($activeCompanyIds),
+                            'company_ids' => $activeCompanyIds
+                        ]);
+                    } else {
+                        Log::warning('没有找到活跃的公司，跳过默认分发', [
+                            'record_id' => $record->id
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    // 分发失败不影响记录创建，只记录日志
+                    Log::error('数据记录默认分发失败', [
+                        'record_id' => $record->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+
+                return $record;
+            });
 
             $record->load(['submitter', 'claimer']);
 
