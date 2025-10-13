@@ -87,8 +87,8 @@
             <a-image
               v-if="record.image_url"
               :src="record.image_url"
-              width="150"
-              height="150"
+              width="300"
+              height="300"
               fit="contain"
               :preview="true"
               style="border-radius: 4px; cursor: pointer;"
@@ -390,6 +390,89 @@ const handleMyClaimedPageSizeChange = (pageSize: number) => {
 }
 
 /**
+ * 复制图片到剪贴板
+ * @param imageUrl 图片URL
+ */
+const copyImageToClipboard = async (imageUrl: string) => {
+  try {
+    // 检查浏览器是否支持 Clipboard API
+    if (!navigator.clipboard || !navigator.clipboard.write) {
+      throw new Error('浏览器不支持图片复制功能')
+    }
+
+    // 使用 Canvas 方案获取图片数据，避免跨域问题
+    const blob = await getImageBlobFromCanvas(imageUrl)
+    
+    // 创建 ClipboardItem 并复制到剪贴板
+    const clipboardItem = new ClipboardItem({
+      [blob.type]: blob
+    })
+
+    await navigator.clipboard.write([clipboardItem])
+    Message.success('图片已复制到剪贴板')
+  } catch (error) {
+    console.error('复制图片失败:', error)
+    // 只显示错误提示，不打开新窗口
+    Message.error('复制图片失败，请稍后重试')
+  }
+}
+
+/**
+ * 使用 Canvas 获取图片 Blob 数据
+ * @param imageUrl 图片URL
+ * @returns Promise<Blob>
+ */
+const getImageBlobFromCanvas = (imageUrl: string): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    // 创建隐藏的 img 元素
+    const img = new Image()
+    
+    // 设置跨域属性
+    img.crossOrigin = 'anonymous'
+    
+    img.onload = () => {
+      try {
+        // 创建 Canvas 元素
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        if (!ctx) {
+          throw new Error('无法创建 Canvas 上下文')
+        }
+        
+        // 设置 Canvas 尺寸与图片相同
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        
+        // 将图片绘制到 Canvas 上
+        ctx.drawImage(img, 0, 0)
+        
+        // 将 Canvas 转换为 Blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob)
+          } else {
+            reject(new Error('Canvas 转换为 Blob 失败'))
+          }
+        }, 'image/png')
+        
+      } catch (error) {
+        reject(error)
+      }
+    }
+    
+    img.onerror = () => {
+      reject(new Error('图片加载失败'))
+    }
+    
+    // 开始加载图片
+    img.src = imageUrl
+  })
+}
+
+
+
+/**
  * 处理领取操作
  */
 const handleClaim = async (record: DataRecord) => {
@@ -407,6 +490,9 @@ const handleClaim = async (record: DataRecord) => {
     
     if (response.data) {
       Message.success('领取成功')
+      
+      // 领取成功后，根据数据内容自动复制到剪贴板
+      await handleAutoClipboard(record)
       
       // 刷新两个表格的数据
       loadUnclaimedData()
@@ -427,6 +513,33 @@ const handleClaim = async (record: DataRecord) => {
   } finally {
     // 清除加载状态
     claimingIds.value.delete(record.id)
+  }
+}
+
+/**
+ * 处理自动复制到剪贴板功能
+ * 优先级：手机号 > 图片
+ * @param record 数据记录
+ */
+const handleAutoClipboard = async (record: DataRecord) => {
+  try {
+    // 优先复制手机号
+    if (record.phone && record.phone.trim()) {
+      await copyToClipboard(record.phone)
+      return
+    }
+    
+    // 如果没有手机号，则复制图片
+    if (record.image_url && record.image_url.trim()) {
+      await copyImageToClipboard(record.image_url)
+      return
+    }
+    
+    // 如果都没有，则不进行复制操作
+    console.log('该记录没有可复制的手机号或图片')
+  } catch (error) {
+    console.error('自动复制失败:', error)
+    // 这里不显示错误消息，因为复制失败不应该影响领取操作的成功提示
   }
 }
 

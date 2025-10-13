@@ -141,7 +141,10 @@ class ImageController extends Controller
         $manager = new ImageManager(new Driver());
         $image = $manager->read($file->getPathname());
 
-        // 获取原始图片信息
+        // 顺时针旋转90°（修复图片方向问题）
+        $image->rotate(-90);
+
+        // 获取旋转后的图片信息
         $originalWidth = $image->width();
         $originalHeight = $image->height();
         $originalSize = $file->getSize();
@@ -372,7 +375,10 @@ class ImageController extends Controller
         $manager = new ImageManager(new Driver());
         $image = $manager->read($tempFile);
 
-        // 获取图片信息
+        // 顺时针旋转90°（修复图片方向问题）
+        $image->rotate(-90);
+
+        // 获取旋转后的图片信息
         $originalWidth = $image->width();
         $originalHeight = $image->height();
         $originalSize = filesize($tempFile);
