@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\DataRecord;
+use App\Models\DataRecordAssignment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 /**
@@ -19,6 +21,7 @@ class StatisticsController extends Controller
 {
     /**
      * 获取领取统计数据
+     * 基于新的数据分发系统（data_record_assignments 表）进行统计
      * 
      * @param Request $request
      * @return JsonResponse
@@ -26,55 +29,66 @@ class StatisticsController extends Controller
     public function claimStatistics(Request $request): JsonResponse
     {
         try {
+            $user = Auth::user();
+            
+            // 获取公司ID参数，如果未提供则使用当前用户的公司
+            $companyId = $request->get('company_id', $user->company_id);
+            
+            // 权限检查：普通用户只能查看自己公司的数据
+            if ($user->role !== 'admin' && $companyId != $user->company_id) {
+                return ApiResponse::error('无权限查看其他公司的统计数据', 403);
+            }
+
             // 获取日期参数
             $date = $request->get('date');
             $startDate = $request->get('start_date');
             $endDate = $request->get('end_date');
 
-            // 构建查询条件
-            $query = DataRecord::query();
+            // 构建基于 data_record_assignments 表的查询条件
+            $query = DataRecordAssignment::where('company_id', $companyId);
             
             if ($date) {
                 // 单日查询
-                $query->whereDate('created_at', $date);
+                $query->whereDate('assigned_at', $date);
             } elseif ($startDate && $endDate) {
                 // 日期范围查询
-                $query->whereBetween('created_at', [
+                $query->whereBetween('assigned_at', [
                     Carbon::parse($startDate)->startOfDay(),
                     Carbon::parse($endDate)->endOfDay()
                 ]);
             } else {
                 // 默认查询当天
-                $query->whereDate('created_at', Carbon::today());
+                $query->whereDate('assigned_at', Carbon::today());
             }
 
-            // 总体统计
-            $totalRecords = $query->count();
-            $claimedRecords = (clone $query)->where('is_claimed', true)->count();
-            $completedRecords = (clone $query)->where('is_completed', true)->count();
+            // 总体统计 - 基于分发记录
+            $totalRecords = $query->count(); // 分发给当前公司的总数据量
+            $claimedRecords = (clone $query)->whereNotNull('assigned_to')->count(); // 已领取数据（assigned_to 不为 null）
+            $completedRecords = (clone $query)->where('is_completed', true)->count(); // 已完成数据
             $completionRate = $claimedRecords > 0 ? round(($completedRecords / $claimedRecords) * 100, 2) : 0;
 
-            // 用户领取统计
-            $userStatistics = DB::table('data_records')
-                ->join('users', 'data_records.claimer_id', '=', 'users.id')
+            // 用户领取统计 - 基于分发记录
+            $userStatistics = DB::table('data_record_assignments')
+                ->join('users', 'data_record_assignments.assigned_to', '=', 'users.id')
                 ->select([
                     'users.id as user_id',
                     'users.name as user_name',
-                    DB::raw('COUNT(data_records.id) as claimed_count'),
-                    DB::raw('SUM(CASE WHEN data_records.is_completed = 1 THEN 1 ELSE 0 END) as completed_count')
+                    DB::raw('COUNT(data_record_assignments.id) as claimed_count'),
+                    DB::raw('SUM(CASE WHEN data_record_assignments.is_completed = 1 THEN 1 ELSE 0 END) as completed_count')
                 ])
-                ->where('data_records.is_claimed', true)
+                ->where('data_record_assignments.company_id', $companyId)
+                ->whereNotNull('data_record_assignments.assigned_to') // 只统计已领取的记录
                 ->when($date, function ($query, $date) {
-                    return $query->whereDate('data_records.created_at', $date);
+                    return $query->whereDate('data_record_assignments.assigned_at', $date);
                 })
                 ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
-                    return $query->whereBetween('data_records.created_at', [
+                    return $query->whereBetween('data_record_assignments.assigned_at', [
                         Carbon::parse($startDate)->startOfDay(),
                         Carbon::parse($endDate)->endOfDay()
                     ]);
                 })
                 ->when(!$date && !($startDate && $endDate), function ($query) {
-                    return $query->whereDate('data_records.created_at', Carbon::today());
+                    return $query->whereDate('data_record_assignments.assigned_at', Carbon::today());
                 })
                 ->groupBy('users.id', 'users.name')
                 ->orderByDesc('claimed_count')
@@ -103,6 +117,7 @@ class StatisticsController extends Controller
 
     /**
      * 获取收集统计数据
+     * 结合新的数据分发系统和原有数据记录表进行统计
      * 
      * @param Request $request
      * @return JsonResponse
@@ -110,38 +125,62 @@ class StatisticsController extends Controller
     public function collectionStatistics(Request $request): JsonResponse
     {
         try {
+            $user = Auth::user();
+            
+            // 获取公司ID参数，如果未提供则使用当前用户的公司
+            $companyId = $request->get('company_id', $user->company_id);
+            
+            // 权限检查：普通用户只能查看自己公司的数据
+            if ($user->role !== 'admin' && $companyId != $user->company_id) {
+                return ApiResponse::error('无权限查看其他公司的统计数据', 403);
+            }
+
             // 获取日期参数
             $date = $request->get('date');
             $startDate = $request->get('start_date');
             $endDate = $request->get('end_date');
 
-            // 构建查询条件
-            $query = DataRecord::query();
+            // 构建基于 data_records 表的查询条件（用于总数据量和重复数据统计）
+            $recordQuery = DataRecord::query();
             
             if ($date) {
                 // 单日查询
-                $query->whereDate('created_at', $date);
+                $recordQuery->whereDate('created_at', $date);
             } elseif ($startDate && $endDate) {
                 // 日期范围查询
-                $query->whereBetween('created_at', [
+                $recordQuery->whereBetween('created_at', [
                     Carbon::parse($startDate)->startOfDay(),
                     Carbon::parse($endDate)->endOfDay()
                 ]);
             } else {
                 // 默认查询当天
-                $query->whereDate('created_at', Carbon::today());
+                $recordQuery->whereDate('created_at', Carbon::today());
+            }
+
+            // 构建基于 data_record_assignments 表的查询条件（用于领取和完成统计）
+            $assignmentQuery = DataRecordAssignment::where('company_id', $companyId);
+            
+            if ($date) {
+                $assignmentQuery->whereDate('assigned_at', $date);
+            } elseif ($startDate && $endDate) {
+                $assignmentQuery->whereBetween('assigned_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } else {
+                $assignmentQuery->whereDate('assigned_at', Carbon::today());
             }
 
             // 总体统计
-            $totalRecords = $query->count();
-            $claimedRecords = (clone $query)->where('is_claimed', true)->count();
-            $completedRecords = (clone $query)->where('is_completed', true)->count();
-            $duplicateRecords = (clone $query)->where('is_duplicate', true)->count();
+            $totalRecords = $recordQuery->count(); // 基于 data_records 表统计总数据量
+            $claimedRecords = $assignmentQuery->count(); // 基于 data_record_assignments 表统计已分发的数据
+            $completedRecords = (clone $assignmentQuery)->where('is_completed', true)->count(); // 基于 data_record_assignments 表统计已完成的数据
+            $duplicateRecords = (clone $recordQuery)->where('is_duplicate', true)->count(); // 基于 data_records 表统计重复数据
             
-            $completionRate = $totalRecords > 0 ? round(($completedRecords / $totalRecords) * 100, 2) : 0;
+            $completionRate = $claimedRecords > 0 ? round(($completedRecords / $claimedRecords) * 100, 2) : 0;
             $duplicateRate = $totalRecords > 0 ? round(($duplicateRecords / $totalRecords) * 100, 2) : 0;
 
-            // 用户提交统计
+            // 用户提交统计 - 基于 data_records 表
             $userStatistics = DB::table('data_records')
                 ->join('users', 'data_records.submitter_id', '=', 'users.id')
                 ->select([
