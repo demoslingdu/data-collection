@@ -22,7 +22,7 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = User::query();
+            $query = User::with('company');
 
             // 搜索功能（按姓名或账户名搜索）
             if ($request->filled('search')) {
@@ -86,6 +86,7 @@ class UserController extends Controller
                 'account' => 'required|string|max:100|unique:users',
                 'password' => 'required|string|min:6',
                 'role' => 'required|in:admin,user',
+                'company_id' => 'nullable|integer|exists:companies,id',
             ], [
                 'name.required' => '姓名不能为空',
                 'name.max' => '姓名不能超过255个字符',
@@ -96,6 +97,8 @@ class UserController extends Controller
                 'password.min' => '密码至少6位',
                 'role.required' => '角色不能为空',
                 'role.in' => '角色必须是admin或user',
+                'company_id.integer' => '公司ID必须是整数',
+                'company_id.exists' => '所选公司不存在',
             ]);
 
             if ($validator->fails()) {
@@ -107,6 +110,7 @@ class UserController extends Controller
                 'account' => $request->account,
                 'password' => Hash::make($request->password),
                 'role' => $request->role,
+                'company_id' => $request->company_id,
             ]);
 
             return ApiResponse::created($user, '用户创建成功');
@@ -125,7 +129,7 @@ class UserController extends Controller
     public function show(int $id): JsonResponse
     {
         try {
-            $user = User::find($id);
+            $user = User::with('company')->find($id);
 
             if (!$user) {
                 return ApiResponse::notFound('用户不存在');
@@ -165,6 +169,7 @@ class UserController extends Controller
                 ],
                 'password' => 'sometimes|string|min:6',
                 'role' => 'sometimes|required|in:admin,user',
+                'company_id' => 'sometimes|nullable|integer|exists:companies,id',
             ], [
                 'name.required' => '姓名不能为空',
                 'name.max' => '姓名不能超过255个字符',
@@ -174,6 +179,8 @@ class UserController extends Controller
                 'password.min' => '密码至少6位',
                 'role.required' => '角色不能为空',
                 'role.in' => '角色必须是admin或user',
+                'company_id.integer' => '公司ID必须是整数',
+                'company_id.exists' => '所选公司不存在',
             ]);
 
             if ($validator->fails()) {
@@ -192,6 +199,9 @@ class UserController extends Controller
             }
             if ($request->filled('role')) {
                 $user->role = $request->role;
+            }
+            if ($request->has('company_id')) {
+                $user->company_id = $request->company_id;
             }
 
             $user->save();
