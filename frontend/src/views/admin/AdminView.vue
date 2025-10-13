@@ -44,6 +44,9 @@
                  {{ record.role === 'admin' ? '管理员' : '普通用户' }}
                </a-tag>
              </template>
+             <template #company="{ record }">
+               <span>{{ record.company?.name || '-' }}</span>
+             </template>
              <template #actions="{ record }">
                <a-space>
                  <a-button type="text" size="small" @click="handleEditUser(record)">
@@ -145,6 +148,17 @@
              <a-option value="admin">管理员</a-option>
            </a-select>
          </a-form-item>
+         <a-form-item field="company_id" label="所属公司">
+           <a-select v-model="userForm.company_id" placeholder="请选择公司" allow-clear>
+             <a-option 
+               v-for="company in companies" 
+               :key="company.id" 
+               :value="company.id"
+             >
+               {{ company.name }}
+             </a-option>
+           </a-select>
+         </a-form-item>
       </a-form>
     </a-modal>
   </div>
@@ -168,10 +182,14 @@ import {
   IconRefresh
 } from '@arco-design/web-vue/es/icon'
 import { getUserList, createUser, updateUser, deleteUser, resetUserPassword, type User, type CreateUserData, type UpdateUserData, type UserQuery } from '@/api/user'
+import { getActiveCompanies, type Company } from '@/api/company'
 
 // 响应式数据
 const userListLoading = ref(false)
 const logListLoading = ref(false)
+
+// 公司数据
+const companies = ref<Company[]>([])
 
 
 
@@ -209,6 +227,12 @@ const userColumns = [
     width: 100
   },
   {
+    title: '所属公司',
+    dataIndex: 'company',
+    slotName: 'company',
+    width: 150
+  },
+  {
     title: '创建时间',
     dataIndex: 'created_at',
     width: 180
@@ -233,6 +257,7 @@ interface UserForm {
   password: string
   password_confirmation: string
   role: 'admin' | 'user'
+  company_id?: number
 }
 
 const userForm = reactive<UserForm>({
@@ -241,7 +266,8 @@ const userForm = reactive<UserForm>({
   account: '',
   password: '',
   password_confirmation: '',
-  role: 'user'
+  role: 'user',
+  company_id: undefined
 })
 
 const userFormRules = {
@@ -270,6 +296,9 @@ const userFormRules = {
   ],
   role: [
     { required: true, message: '请选择角色' }
+  ],
+  company_id: [
+    { required: true, message: '请选择公司' }
   ]
 }
 
@@ -410,6 +439,7 @@ const handleAddUser = () => {
   userForm.password = ''
   userForm.password_confirmation = ''
   userForm.role = 'user'
+  userForm.company_id = undefined
   userModalVisible.value = true
 }
 
@@ -424,6 +454,7 @@ const handleEditUser = (record: User) => {
   userForm.password = ''
   userForm.password_confirmation = ''
   userForm.role = record.role
+  userForm.company_id = record.company_id
   userModalVisible.value = true
 }
 
@@ -460,7 +491,8 @@ const handleUserModalOk = async () => {
       const updateData: UpdateUserData = {
         name: userForm.name,
         account: userForm.account,
-        role: userForm.role
+        role: userForm.role,
+        company_id: userForm.company_id
       }
       await updateUser(userForm.id, updateData)
       Message.success('更新成功')
@@ -471,7 +503,8 @@ const handleUserModalOk = async () => {
         account: userForm.account,
         password: userForm.password,
         password_confirmation: userForm.password_confirmation,
-        role: userForm.role
+        role: userForm.role,
+        company_id: userForm.company_id
       }
       await createUser(createData)
       Message.success('添加成功')
@@ -545,10 +578,32 @@ const getLogLevelColor = (level: string) => {
   return colors[level] || 'gray'
 }
 
+/**
+ * 获取公司列表
+ */
+const fetchCompanyList = async () => {
+  try {
+    console.log('开始获取公司列表...')
+    const response = await getActiveCompanies()
+    console.log('公司列表API响应:', response)
+    
+    if (response.data) {
+      // getActiveCompanies 返回的数据结构是 { success: boolean; data: Company[] }
+      // 所以直接使用 response.data 而不是 response.data.data
+      companies.value = response.data
+      console.log('设置公司列表数据:', companies.value)
+    }
+  } catch (error) {
+    console.error('获取公司列表失败:', error)
+    Message.error('获取公司列表失败')
+  }
+}
+
 // 组件挂载时获取数据
 onMounted(() => {
   fetchUserList()
   fetchLogList()
+  fetchCompanyList()
 })
 </script>
 

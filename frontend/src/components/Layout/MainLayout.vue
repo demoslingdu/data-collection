@@ -40,6 +40,22 @@
           数据记录
         </a-menu-item>
 
+        <!-- 公司管理菜单 -->
+        <a-menu-item v-if="isAdmin" key="companies">
+          <template #icon>
+            <icon-home />
+          </template>
+          公司管理
+        </a-menu-item>
+
+        <!-- 数据分发菜单 -->
+        <a-menu-item v-if="isAdmin" key="assignments">
+          <template #icon>
+            <icon-send />
+          </template>
+          数据分发
+        </a-menu-item>
+
         <a-menu-item v-if="isAdmin" key="profile">
           <template #icon>
             <icon-user />
@@ -72,6 +88,12 @@
               <icon-bar-chart />
             </template>
             收集统计
+          </a-menu-item>
+          <a-menu-item key="company-statistics">
+            <template #icon>
+              <icon-bar-chart />
+            </template>
+            公司统计
           </a-menu-item>
         </a-sub-menu>
       </a-menu>
@@ -154,7 +176,9 @@ import {
   IconDown,
   IconExport,
   IconBarChart,
-  IconCheckCircle
+  IconCheckCircle,
+  IconHome,
+  IconSend
 } from '@arco-design/web-vue/es/icon'
 
 const router = useRouter()
@@ -176,10 +200,14 @@ const pageTitleMap: Record<string, string> = {
   'data-records': '数据记录',
   'data-record-create': '新建数据记录',
   'data-record-detail': '数据记录详情',
+  companies: '公司管理',
+  assignments: '数据分发',
+  'assignment-detail': '分发详情',
   profile: '个人资料',
   admin: '管理员控制台',
   'claim-statistics': '领取统计',
-  'collection-statistics': '收集统计'
+  'collection-statistics': '收集统计',
+  'company-statistics': '公司统计'
 }
 
 // 当前页面标题
@@ -202,10 +230,13 @@ const handleMenuClick = (key: string) => {
   const routeMap: Record<string, string> = {
     dashboard: '/dashboard',
     'data-records': '/data-records',
+    companies: '/companies',
+    assignments: '/assignments',
     profile: '/profile',
     admin: '/admin',
     'claim-statistics': '/admin/claim-statistics',
-    'collection-statistics': '/admin/collection-statistics'
+    'collection-statistics': '/admin/collection-statistics',
+    'company-statistics': '/admin/company-statistics'
   }
 
   const path = routeMap[key]
@@ -243,9 +274,12 @@ watch(
       '/dashboard': 'dashboard',
       '/data-records': 'data-records',
       '/data': 'data-records',
+      '/companies': 'companies',
+      '/assignments': 'assignments',
       '/profile': 'profile',
       '/admin/claim-statistics': 'claim-statistics',
       '/admin/collection-statistics': 'collection-statistics',
+      '/admin/company-statistics': 'company-statistics',
       '/admin': 'admin'
     }
 
@@ -261,7 +295,7 @@ watch(
     if (matchedKey) {
       selectedKeys.value = [matchedKey]
       // 如果是统计页面，需要展开统计子菜单
-      if (matchedKey === 'claim-statistics' || matchedKey === 'collection-statistics') {
+      if (matchedKey === 'claim-statistics' || matchedKey === 'collection-statistics' || matchedKey === 'company-statistics') {
         defaultOpenKeys.value = ['statistics']
       }
     }

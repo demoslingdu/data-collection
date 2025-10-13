@@ -53,4 +53,7 @@ apiClient.interceptors.response.use(
   }
 )
 
+// 导出 request 函数供其他模块使用
+export const request = apiClient
+
 export default apiClient

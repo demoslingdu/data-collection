@@ -3,7 +3,7 @@
     <!-- 页面头部 -->
     <div class="dashboard-header">
       <h1>数据记录管理</h1>
-      <p>管理和查看所有数据记录，支持搜索、筛选功能</p>
+      <p>管理和查看所有数据记录，支持搜索、筛选、多公司分发功能</p>
     </div>
 
     <!-- 搜索功能区域 -->
@@ -33,6 +33,7 @@
             <a-option value="kuaishou">快手</a-option>
             <a-option value="xiaohongshu">小红书</a-option>
             <a-option value="weibo">微博</a-option>
+            <a-option value="bilibili">B站</a-option>
           </a-select>
         </a-form-item>
         <a-form-item label="领取状态">
@@ -55,6 +56,35 @@
           >
             <a-option value="completed">已完成</a-option>
             <a-option value="uncompleted">未完成</a-option>
+          </a-select>
+        </a-form-item>
+        <!-- 新增公司筛选 -->
+        <a-form-item label="分发公司" v-if="userStore.user?.role === 'admin'">
+          <a-select
+            v-model="searchForm.company_id"
+            placeholder="请选择公司"
+            style="width: 150px"
+            allow-clear
+          >
+            <a-option 
+              v-for="company in companies" 
+              :key="company.id" 
+              :value="company.id"
+            >
+              {{ company.name }}
+            </a-option>
+          </a-select>
+        </a-form-item>
+        <!-- 新增分发状态筛选 -->
+        <a-form-item label="分发状态">
+          <a-select
+            v-model="searchForm.assignmentStatus"
+            placeholder="请选择分发状态"
+            style="width: 140px"
+            allow-clear
+          >
+            <a-option value="assigned">已分发</a-option>
+            <a-option value="unassigned">未分发</a-option>
           </a-select>
         </a-form-item>
         <a-form-item label="时间范围">
@@ -82,6 +112,24 @@
       </a-form>
     </a-card>
 
+    <!-- 操作按钮区域 -->
+    <a-card class="action-card" v-if="userStore.user?.role === 'admin'">
+      <a-space>
+        <a-button 
+          type="primary" 
+          @click="showBatchAssignModal = true"
+          :disabled="selectedRowKeys.length === 0"
+        >
+          <template #icon><icon-send /></template>
+          批量分发 ({{ selectedRowKeys.length }})
+        </a-button>
+        <a-button type="outline" @click="loadData">
+          <template #icon><icon-refresh /></template>
+          刷新数据
+        </a-button>
+      </a-space>
+    </a-card>
+
     <!-- 数据表格 -->
     <a-card title="数据记录列表" class="table-card">
       <a-table
@@ -94,7 +142,7 @@
         v-model:selectedKeys="selectedRowKeys"
         @page-change="handlePageChange"
         @page-size-change="handlePageSizeChange"
-        :scroll="{ x: 1520, y: 600 }"
+        :scroll="{ x: 1800, y: 600 }"
         stripe
         hoverable
         size="large"
@@ -141,9 +189,35 @@
             {{ record.is_duplicate ? '重复' : '正常' }}
           </a-tag>
         </template>
+        <!-- 新增分发状态列 -->
+        <template #assignment_status="{ record }">
+          <div class="assignment-status">
+            <div v-if="record.assignments && record.assignments.length > 0" class="assignment-list">
+              <div 
+                v-for="assignment in record.assignments" 
+                :key="assignment.id"
+                class="assignment-item"
+              >
+                <div class="company-info">
+                  <span class="company-name">{{ assignment.company?.name }}</span>
+                  <a-tag 
+                    :color="getAssignmentStatusColor(assignment.status)"
+                    size="small"
+                  >
+                    {{ getAssignmentStatusText(assignment.status) }}
+                  </a-tag>
+                </div>
+                <div class="assignment-user" v-if="assignment.assigned_to_user">
+                  处理人: {{ assignment.assigned_to_user.name }}
+                </div>
+              </div>
+            </div>
+            <span v-else class="no-assignment">未分发</span>
+          </div>
+        </template>
         <template #actions="{ record }">
           <a-space size="mini">
-            <!-- 领取按钮：仅在未领取且未完成时显示 -->
+            <!-- 原有的领取和完成按钮 -->
             <a-button 
               v-if="!record.is_claimed && !record.is_completed"
               type="primary" 
@@ -154,7 +228,6 @@
             >
               {{ claimingIds.has(record.id) ? '领取中...' : '领取' }}
             </a-button>
-            <!-- 完成按钮：仅在已领取且未完成时显示 -->
             <a-button 
               v-if="record.is_claimed && !record.is_completed"
               type="outline" 
@@ -166,10 +239,29 @@
             >
               {{ completingIds.has(record.id) ? '完成中...' : '完成' }}
             </a-button>
-            <!-- 已完成状态显示 -->
             <a-tag v-if="record.is_completed" color="green" size="small">
               已完成
             </a-tag>
+            
+            <!-- 新增分发按钮 -->
+            <a-button 
+              v-if="userStore.user?.role === 'admin'"
+              type="text" 
+              size="mini" 
+              @click="showSingleAssignModal(record)"
+            >
+              分发
+            </a-button>
+            
+            <!-- 查看分发详情按钮 -->
+            <a-button 
+              v-if="record.assignments && record.assignments.length > 0"
+              type="text" 
+              size="mini" 
+              @click="viewAssignments(record)"
+            >
+              查看分发
+            </a-button>
           </a-space>
         </template>
         <template #empty>
@@ -177,34 +269,160 @@
         </template>
       </a-table>
     </a-card>
+
+    <!-- 批量分发模态框 -->
+    <a-modal
+      v-model:visible="showBatchAssignModal"
+      title="批量数据分发"
+      width="600px"
+      @ok="handleBatchAssign"
+      :confirm-loading="batchAssignLoading"
+    >
+      <a-form :model="batchAssignForm" layout="vertical">
+        <a-form-item label="选择公司" required>
+          <a-select 
+            v-model="batchAssignForm.company_ids" 
+            placeholder="选择要分发的公司"
+            multiple
+          >
+            <a-option 
+              v-for="company in companies" 
+              :key="company.id" 
+              :value="company.id"
+            >
+              {{ company.name }} ({{ company.code }})
+            </a-option>
+          </a-select>
+        </a-form-item>
+        
+        <a-form-item label="备注">
+          <a-textarea 
+            v-model="batchAssignForm.notes" 
+            placeholder="输入分发备注（可选）"
+            :max-length="500"
+            show-word-limit
+          />
+        </a-form-item>
+        
+        <a-form-item label="选中的数据记录">
+          <div class="selected-records">
+            <a-tag 
+              v-for="recordId in selectedRowKeys" 
+              :key="recordId"
+              closable
+              @close="removeSelectedRecord(recordId)"
+            >
+              记录 #{{ recordId }}
+            </a-tag>
+          </div>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 单个分发模态框 -->
+    <a-modal
+      v-model:visible="showSingleAssignModalVisible"
+      title="数据分发"
+      width="500px"
+      @ok="handleSingleAssign"
+      :confirm-loading="singleAssignLoading"
+    >
+      <a-form :model="singleAssignForm" layout="vertical">
+        <a-form-item label="数据记录">
+          <div class="record-info">
+            <span>记录 #{{ currentRecord?.id }}</span>
+            <a-tag>{{ getPlatformText(currentRecord?.platform || '') }}</a-tag>
+          </div>
+        </a-form-item>
+        
+        <a-form-item label="选择公司" required>
+          <a-select 
+            v-model="singleAssignForm.company_id" 
+            placeholder="选择要分发的公司"
+          >
+            <a-option 
+              v-for="company in companies" 
+              :key="company.id" 
+              :value="company.id"
+            >
+              {{ company.name }} ({{ company.code }})
+            </a-option>
+          </a-select>
+        </a-form-item>
+        
+        <a-form-item label="指定处理人">
+          <a-select 
+            v-model="singleAssignForm.assigned_to" 
+            placeholder="选择处理人（可选）"
+            allow-clear
+          >
+            <a-option 
+              v-for="user in companyUsers" 
+              :key="user.id" 
+              :value="user.id"
+            >
+              {{ user.name }} ({{ user.email }})
+            </a-option>
+          </a-select>
+        </a-form-item>
+        
+        <a-form-item label="备注">
+          <a-textarea 
+            v-model="singleAssignForm.notes" 
+            placeholder="输入分发备注（可选）"
+            :max-length="500"
+            show-word-limit
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
  * 数据记录列表页面
- * 提供数据记录的查看、搜索、筛选、分页等功能
+ * 提供数据记录的查看、搜索、筛选、分页、多公司分发等功能
  */
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconSearch,
-  IconRefresh
+  IconRefresh,
+  IconSend
 } from '@arco-design/web-vue/es/icon'
+import { useUserStore } from '@/stores/user'
 import { dataRecordApi } from '@/api/dataRecord'
 import type { DataRecord } from '@/api/dataRecord'
+import { getActiveCompanies, type Company } from '@/api/company'
+import { 
+  batchAssignData, 
+  createDataAssignment,
+  type BatchAssignDataRequest,
+  type CreateDataAssignmentRequest
+} from '@/api/dataAssignment'
 
-// 路由实例
+// 路由实例和用户状态
 const router = useRouter()
+const userStore = useUserStore()
 
 // 响应式数据
 const loading = ref(false)
 const selectedRowKeys = ref<string[]>([])
+const companies = ref<Company[]>([])
+const companyUsers = ref<any[]>([])
 
 // 按钮加载状态
 const claimingIds = ref<Set<number>>(new Set())
 const completingIds = ref<Set<number>>(new Set())
+const batchAssignLoading = ref(false)
+const singleAssignLoading = ref(false)
+
+// 模态框状态
+const showBatchAssignModal = ref(false)
+const showSingleAssignModalVisible = ref(false)
+const currentRecord = ref<DataRecord | null>(null)
 
 // 搜索表单
 const searchForm = reactive({
@@ -212,7 +430,24 @@ const searchForm = reactive({
   platform: '',
   claimStatus: '',
   completeStatus: '',
+  company_id: undefined as number | undefined,
+  assignmentStatus: '',
   dateRange: []
+})
+
+// 批量分发表单
+const batchAssignForm = reactive<BatchAssignDataRequest>({
+  data_record_ids: [],
+  company_ids: [],
+  notes: undefined
+})
+
+// 单个分发表单
+const singleAssignForm = reactive<CreateDataAssignmentRequest>({
+  data_record_id: undefined,
+  company_id: undefined,
+  assigned_to: undefined,
+  notes: undefined
 })
 
 // 分页配置
@@ -309,6 +544,13 @@ const columns = [
     align: 'center'
   },
   {
+    title: '分发状态',
+    dataIndex: 'assignment_status',
+    slotName: 'assignment_status',
+    width: 200,
+    align: 'center'
+  },
+  {
     title: '创建时间',
     dataIndex: 'created_at',
     width: 180,
@@ -319,7 +561,7 @@ const columns = [
   {
     title: '操作',
     slotName: 'actions',
-    width: 200,
+    width: 250,
     fixed: 'right',
     align: 'center'
   }
@@ -344,12 +586,125 @@ const getPlatformText = (platform: string): string => {
     douyin: '抖音',
     kuaishou: '快手',
     xiaohongshu: '小红书',
-    weibo: '微博'
+    weibo: '微博',
+    bilibili: 'B站'
   }
   return platformMap[platform] || platform
 }
 
+/**
+ * 获取分发状态颜色
+ */
+const getAssignmentStatusColor = (status: string) => {
+  const colors = {
+    pending: 'orange',
+    in_progress: 'blue',
+    completed: 'green'
+  }
+  return colors[status as keyof typeof colors] || 'gray'
+}
 
+/**
+ * 获取分发状态文本
+ */
+const getAssignmentStatusText = (status: string) => {
+  const texts = {
+    pending: '待处理',
+    in_progress: '处理中',
+    completed: '已完成'
+  }
+  return texts[status as keyof typeof texts] || status
+}
+
+/**
+ * 加载公司列表
+ */
+const loadCompanies = async () => {
+  try {
+    const response = await getActiveCompanies()
+    companies.value = response.data
+  } catch (error) {
+    console.error('加载公司列表失败:', error)
+  }
+}
+
+/**
+ * 显示单个分发模态框
+ */
+const showSingleAssignModal = (record: DataRecord) => {
+  currentRecord.value = record
+  singleAssignForm.data_record_id = record.id
+  singleAssignForm.company_id = undefined
+  singleAssignForm.assigned_to = undefined
+  singleAssignForm.notes = undefined
+  showSingleAssignModalVisible.value = true
+}
+
+/**
+ * 处理单个分发
+ */
+const handleSingleAssign = async () => {
+  if (!singleAssignForm.data_record_id || !singleAssignForm.company_id) {
+    Message.error('请填写必填字段')
+    return
+  }
+  
+  try {
+    singleAssignLoading.value = true
+    await createDataAssignment(singleAssignForm)
+    Message.success('分发成功')
+    showSingleAssignModalVisible.value = false
+    loadData()
+  } catch (error) {
+    console.error('分发失败:', error)
+    Message.error('分发失败')
+  } finally {
+    singleAssignLoading.value = false
+  }
+}
+
+/**
+ * 处理批量分发
+ */
+const handleBatchAssign = async () => {
+  if (!selectedRowKeys.value.length || !batchAssignForm.company_ids.length) {
+    Message.error('请选择数据记录和公司')
+    return
+  }
+  
+  batchAssignForm.data_record_ids = selectedRowKeys.value.map(id => Number(id))
+  
+  try {
+    batchAssignLoading.value = true
+    await batchAssignData(batchAssignForm)
+    Message.success('批量分发成功')
+    showBatchAssignModal.value = false
+    selectedRowKeys.value = []
+    loadData()
+  } catch (error) {
+    console.error('批量分发失败:', error)
+    Message.error('批量分发失败')
+  } finally {
+    batchAssignLoading.value = false
+  }
+}
+
+/**
+ * 移除选中的记录
+ */
+const removeSelectedRecord = (recordId: string) => {
+  const index = selectedRowKeys.value.indexOf(recordId)
+  if (index > -1) {
+    selectedRowKeys.value.splice(index, 1)
+  }
+}
+
+/**
+ * 查看分发详情
+ */
+const viewAssignments = (record: DataRecord) => {
+  router.push(`/assignment?data_record_id=${record.id}`)
+}
 
 /**
  * 处理搜索
@@ -367,48 +722,11 @@ const handleReset = () => {
   searchForm.platform = ''
   searchForm.claimStatus = ''
   searchForm.completeStatus = ''
+  searchForm.company_id = undefined
+  searchForm.assignmentStatus = ''
   searchForm.dateRange = []
   pagination.current = 1
   loadData()
-}
-
-
-
-/**
- * 处理查看记录
- */
-const handleView = (id: number) => {
-  router.push(`/data/${id}`)
-}
-
-/**
- * 处理编辑记录
- */
-const handleEdit = (id: number) => {
-  router.push(`/data/${id}/edit`)
-}
-
-/**
- * 处理删除记录
- */
-const handleDelete = async (id: number) => {
-  Modal.confirm({
-    title: '确认删除',
-    content: '确定要删除这条数据记录吗？删除后无法恢复。',
-    okText: '确认删除',
-    cancelText: '取消',
-    okButtonProps: { status: 'danger' },
-    onOk: async () => {
-      try {
-        await dataRecordApi.deleteDataRecord(id)
-        Message.success('删除成功')
-        loadData()
-      } catch (error) {
-        console.error('删除失败:', error)
-        Message.error('删除失败，请重试')
-      }
-    }
-  })
 }
 
 /**
@@ -520,7 +838,8 @@ const loadData = async () => {
     // 构建查询参数
     const params: any = {
       page: pagination.current,
-      per_page: pagination.pageSize
+      per_page: pagination.pageSize,
+      include_assignments: true // 包含分发信息
     }
     
     // 添加搜索条件
@@ -538,6 +857,14 @@ const loadData = async () => {
     
     if (searchForm.completeStatus) {
       params.is_completed = searchForm.completeStatus === 'completed' ? 1 : 0
+    }
+    
+    if (searchForm.company_id) {
+      params.company_id = searchForm.company_id
+    }
+    
+    if (searchForm.assignmentStatus) {
+      params.assignment_status = searchForm.assignmentStatus
     }
     
     // 处理日期范围
@@ -564,6 +891,7 @@ const loadData = async () => {
 // 组件挂载时获取数据
 onMounted(() => {
   loadData()
+  loadCompanies()
 })
 </script>
 
@@ -592,7 +920,8 @@ onMounted(() => {
 }
 
 .search-card,
-.table-card {
+.table-card,
+.action-card {
   margin-bottom: 24px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -633,6 +962,64 @@ onMounted(() => {
 .phone-empty {
   color: #86909c;
   font-style: italic;
+}
+
+/* 分发状态样式 */
+.assignment-status {
+  max-width: 180px;
+}
+
+.assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assignment-item {
+  padding: 8px;
+  background: #f7f8fa;
+  border-radius: 4px;
+  border-left: 3px solid #165dff;
+}
+
+.company-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.company-name {
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.assignment-user {
+  font-size: 11px;
+  color: #86909c;
+}
+
+.no-assignment {
+  color: #86909c;
+  font-style: italic;
+}
+
+/* 模态框样式 */
+.selected-records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.record-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #f7f8fa;
+  border-radius: 4px;
 }
 
 /* 响应式设计 */

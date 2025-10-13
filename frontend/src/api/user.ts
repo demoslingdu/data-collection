@@ -3,13 +3,16 @@
  */
 import apiClient from './index'
 import type { ApiResponse } from './auth'
+import type { Company } from './company'
 
-// 用户信息接口（移除邮箱字段，添加账号字段）
+// 用户信息接口（移除邮箱字段，添加账号字段和公司字段）
 export interface User {
   id: number
   name: string
   account: string
   role: 'admin' | 'user'
+  company_id?: number
+  company?: Company
   created_at: string
   updated_at: string
 }
@@ -21,6 +24,7 @@ export interface CreateUserData {
   password: string
   password_confirmation: string
   role: 'admin' | 'user'
+  company_id?: number
 }
 
 // 用户更新数据
@@ -28,6 +32,7 @@ export interface UpdateUserData {
   name?: string
   account?: string
   role?: 'admin' | 'user'
+  company_id?: number
 }
 
 // 用户查询参数

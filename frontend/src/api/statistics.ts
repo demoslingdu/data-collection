@@ -9,6 +9,7 @@ export interface StatisticsParams {
   date?: string // 查询日期，格式：YYYY-MM-DD
   start_date?: string // 开始日期，格式：YYYY-MM-DD
   end_date?: string // 结束日期，格式：YYYY-MM-DD
+  company_id?: number // 公司ID，用于筛选特定公司的统计数据
 }
 
 // 用户统计数据类型

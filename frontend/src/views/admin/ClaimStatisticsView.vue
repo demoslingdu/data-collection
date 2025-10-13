@@ -11,6 +11,25 @@
       <a-card title="筛选条件" :bordered="false">
         <a-row :gutter="16">
           <a-col :span="8">
+            <a-form-item label="选择公司">
+              <a-select
+                v-model="selectedCompanyId"
+                :placeholder="'选择公司'"
+                :allow-clear="false"
+                style="width: 100%"
+                @change="handleCompanyChange"
+              >
+                <a-option
+                  v-for="company in companies"
+                  :key="company.id"
+                  :value="company.id"
+                >
+                  {{ company.name }}
+                </a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
             <a-form-item label="查询日期">
               <a-date-picker
                 v-model="selectedDate"
@@ -32,6 +51,8 @@
               />
             </a-form-item>
           </a-col>
+        </a-row>
+        <a-row :gutter="16">
           <a-col :span="8">
             <a-form-item label="结束日期">
               <a-date-picker
@@ -160,12 +181,19 @@ import {
   IconTrophy
 } from '@arco-design/web-vue/es/icon'
 import { getClaimStatistics, type ClaimStatisticsResponse, type StatisticsParams } from '@/api/statistics'
+import { getActiveCompanies, type Company } from '@/api/company'
+import { useAuthStore } from '@/stores/auth'
 
 // 响应式数据
 const loading = ref(false)
 const selectedDate = ref('')
 const startDate = ref('')
 const endDate = ref('')
+const selectedCompanyId = ref<number | null>(null)
+const companies = ref<Company[]>([])
+
+// 用户信息
+const authStore = useAuthStore()
 
 // 统计数据
 const statisticsData = reactive<ClaimStatisticsResponse>({
@@ -249,12 +277,20 @@ const handleDateRangeChange = () => {
 }
 
 /**
+ * 处理公司选择变化
+ */
+const handleCompanyChange = () => {
+  loadStatistics()
+}
+
+/**
  * 重置筛选条件
  */
 const resetFilters = () => {
   selectedDate.value = ''
   startDate.value = ''
   endDate.value = ''
+  selectedCompanyId.value = authStore.user?.company_id || null
   loadStatistics()
 }
 
@@ -274,6 +310,11 @@ const loadStatistics = async () => {
       params.end_date = endDate.value
     }
     
+    // 添加公司ID参数
+    if (selectedCompanyId.value) {
+      params.company_id = selectedCompanyId.value
+    }
+    
     const data = await getClaimStatistics(params)
     
     // 更新统计数据
@@ -288,8 +329,28 @@ const loadStatistics = async () => {
   }
 }
 
+/**
+ * 加载公司列表
+ */
+const loadCompanies = async () => {
+  try {
+    const response = await getActiveCompanies()
+    if (response.data) {
+      companies.value = response.data
+      // 默认选择当前用户的公司
+      if (authStore.user?.company_id) {
+        selectedCompanyId.value = authStore.user.company_id
+      }
+    }
+  } catch (error) {
+    console.error('加载公司列表失败:', error)
+    Message.error('加载公司列表失败')
+  }
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
+  loadCompanies()
   loadStatistics()
 })
 </script>
