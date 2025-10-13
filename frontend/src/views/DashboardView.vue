@@ -431,7 +431,7 @@ const loadUnclaimedData = async () => {
       await nextTick()
       const imageUrls = response.data.data
         .map((record: DataRecord) => record.image_url)
-        .filter(Boolean)
+        .filter((url): url is string => Boolean(url))
       
       if (imageUrls.length > 0) {
         batchPreloadImages(imageUrls)
@@ -468,7 +468,7 @@ const loadMyClaimedData = async () => {
       await nextTick()
       const imageUrls = response.data.data
         .map((record: DataRecord) => record.image_url)
-        .filter(Boolean)
+        .filter((url): url is string => Boolean(url))
       
       if (imageUrls.length > 0) {
         batchPreloadImages(imageUrls)
