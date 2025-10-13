@@ -12,12 +12,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $data_record_id 数据记录ID
  * @property int $company_id 公司ID
  * @property int $assigned_by 分发人ID
- * @property int|null $assigned_to 处理人ID
+ * @property int $assigned_to 领取人ID
  * @property string $status 处理状态
  * @property string|null $notes 备注信息
  * @property \Carbon\Carbon $assigned_at 分发时间
  * @property \Carbon\Carbon|null $started_at 开始处理时间
  * @property \Carbon\Carbon|null $completed_at 完成时间
+ * @property bool $is_claimed 是否已领取
+ * @property \Carbon\Carbon|null $claimed_at 领取时间
+ * @property bool $is_completed 是否已完成
  * @property \Carbon\Carbon $created_at 创建时间
  * @property \Carbon\Carbon $updated_at 更新时间
  */
@@ -44,6 +47,9 @@ class DataRecordAssignment extends Model
         'assigned_at',
         'started_at',
         'completed_at',
+        'is_claimed',
+        'claimed_at',
+        'is_completed',
     ];
 
     /**
@@ -53,6 +59,9 @@ class DataRecordAssignment extends Model
         'assigned_at' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'claimed_at' => 'datetime',
+        'is_claimed' => 'boolean',
+        'is_completed' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -82,7 +91,7 @@ class DataRecordAssignment extends Model
     }
 
     /**
-     * 获取处理人
+     * 获取领取人
      */
     public function assignedTo(): BelongsTo
     {
@@ -106,7 +115,7 @@ class DataRecordAssignment extends Model
     }
 
     /**
-     * 作用域：根据处理人查询
+     * 作用域：根据领取人查询
      */
     public function scopeByAssignedTo($query, int $userId)
     {
@@ -135,6 +144,38 @@ class DataRecordAssignment extends Model
     public function scopeCompleted($query)
     {
         return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    /**
+     * 作用域：已领取的分发
+     */
+    public function scopeClaimed($query)
+    {
+        return $query->where('is_claimed', true);
+    }
+
+    /**
+     * 作用域：未领取的分发
+     */
+    public function scopeUnclaimed($query)
+    {
+        return $query->where('is_claimed', false);
+    }
+
+    /**
+     * 作用域：已完成处理的分发
+     */
+    public function scopeProcessCompleted($query)
+    {
+        return $query->where('is_completed', true);
+    }
+
+    /**
+     * 作用域：未完成处理的分发
+     */
+    public function scopeProcessIncomplete($query)
+    {
+        return $query->where('is_completed', false);
     }
 
     /**

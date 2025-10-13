@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\DataRecord;
 use App\Models\DataRecordAssignment;
 use App\Models\Company;
+use App\Models\User;
+use App\Services\DataAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +18,12 @@ use Illuminate\Support\Facades\DB;
  */
 class DataAssignmentController extends Controller
 {
+    protected DataAssignmentService $assignmentService;
+
+    public function __construct(DataAssignmentService $assignmentService)
+    {
+        $this->assignmentService = $assignmentService;
+    }
     /**
      * 获取数据分发列表
      */
@@ -71,43 +79,32 @@ class DataAssignmentController extends Controller
             'data_record_ids' => 'required|array',
             'data_record_ids.*' => 'exists:data_records,id',
             'company_id' => 'required|exists:companies,id',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_to' => 'required|exists:users,id',
             'notes' => 'nullable|string',
         ]);
 
         $user = Auth::user();
-        $assignments = [];
+        
+        try {
+            $assignments = $this->assignmentService->createAssignment(
+                $validated['data_record_ids'],
+                $validated['company_id'],
+                $user,
+                $validated['assigned_to'],
+                $validated['notes'] ?? null
+            );
 
-        DB::transaction(function () use ($validated, $user, &$assignments) {
-            foreach ($validated['data_record_ids'] as $dataRecordId) {
-                // 检查是否已经分发给该公司
-                $existingAssignment = DataRecordAssignment::where('data_record_id', $dataRecordId)
-                    ->where('company_id', $validated['company_id'])
-                    ->first();
-
-                if ($existingAssignment) {
-                    continue; // 跳过已分发的记录
-                }
-
-                $assignment = DataRecordAssignment::create([
-                    'data_record_id' => $dataRecordId,
-                    'company_id' => $validated['company_id'],
-                    'assigned_by' => $user->id,
-                    'assigned_to' => $validated['assigned_to'] ?? null,
-                    'assigned_at' => now(),
-                    'status' => 'pending',
-                    'notes' => $validated['notes'] ?? null,
-                ]);
-
-                $assignments[] = $assignment;
-            }
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => '数据分发创建成功',
-            'data' => $assignments,
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => '数据分发创建成功',
+                'data' => $assignments,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '数据分发创建失败：' . $e->getMessage(),
+            ], 400);
+        }
     }
 
     /**
@@ -192,7 +189,7 @@ class DataAssignmentController extends Controller
     }
 
     /**
-     * 批量分发数据
+     * 批量分发数据到多个公司
      */
     public function batchAssign(Request $request): JsonResponse
     {
@@ -205,39 +202,62 @@ class DataAssignmentController extends Controller
         ]);
 
         $user = Auth::user();
-        $assignments = [];
+        
+        try {
+            $assignments = $this->assignmentService->batchAssign(
+                $validated['data_record_ids'],
+                $validated['company_ids'],
+                $user,
+                $validated['notes'] ?? null
+            );
 
-        DB::transaction(function () use ($validated, $user, &$assignments) {
-            foreach ($validated['data_record_ids'] as $dataRecordId) {
-                foreach ($validated['company_ids'] as $companyId) {
-                    // 检查是否已经分发给该公司
-                    $existingAssignment = DataRecordAssignment::where('data_record_id', $dataRecordId)
-                        ->where('company_id', $companyId)
-                        ->first();
+            return response()->json([
+                'success' => true,
+                'message' => '批量分发创建成功',
+                'data' => $assignments,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '批量分发创建失败：' . $e->getMessage(),
+            ], 400);
+        }
+    }
 
-                    if ($existingAssignment) {
-                        continue; // 跳过已分发的记录
-                    }
+    /**
+     * 批量分发数据到多个用户
+     */
+    public function batchAssignToUsers(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'data_record_ids' => 'required|array',
+            'data_record_ids.*' => 'exists:data_records,id',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+            'notes' => 'nullable|string',
+        ]);
 
-                    $assignment = DataRecordAssignment::create([
-                        'data_record_id' => $dataRecordId,
-                        'company_id' => $companyId,
-                        'assigned_by' => $user->id,
-                        'assigned_at' => now(),
-                        'status' => 'pending',
-                        'notes' => $validated['notes'] ?? null,
-                    ]);
+        $user = Auth::user();
+        
+        try {
+            $assignments = $this->assignmentService->batchAssignToUsers(
+                $validated['data_record_ids'],
+                $validated['user_ids'],
+                $user,
+                $validated['notes'] ?? null
+            );
 
-                    $assignments[] = $assignment;
-                }
-            }
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => '批量分发创建成功',
-            'data' => $assignments,
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => '批量分发到用户创建成功',
+                'data' => $assignments,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '批量分发到用户创建失败：' . $e->getMessage(),
+            ], 400);
+        }
     }
 
     /**
@@ -280,38 +300,120 @@ class DataAssignmentController extends Controller
     }
 
     /**
-     * 获取可分发的数据记录
+     * 获取可用的数据记录
      */
     public function availableRecords(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
         $query = DataRecord::query();
 
-        // 搜索过滤
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
+        // 如果指定了公司，则排除已分发给该公司的记录
+        if (isset($validated['company_id'])) {
+            $assignedIds = DataRecordAssignment::where('company_id', $validated['company_id'])
+                ->pluck('data_record_id')
+                ->toArray();
+
+            if (!empty($assignedIds)) {
+                $query->whereNotIn('id', $assignedIds);
+            }
         }
 
-        // 平台过滤
-        if ($request->filled('platform')) {
-            $query->where('platform', $request->get('platform'));
-        }
-
-        // 状态过滤
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
-        }
-
-        // 分页
-        $perPage = $request->get('per_page', 15);
-        $records = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $records = $query->with(['company', 'category'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($validated['per_page'] ?? 15);
 
         return response()->json([
             'success' => true,
             'data' => $records,
         ]);
+    }
+
+    /**
+     * 获取用户可领取的数据列表
+     */
+    public function getClaimableAssignments(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'nullable|string|in:pending,processing,completed',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $user = Auth::user();
+        
+        try {
+            $assignments = $this->assignmentService->getClaimableAssignments(
+                $user->id,
+                $validated['status'] ?? null,
+                $validated['per_page'] ?? 15
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $assignments,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '获取可领取数据失败：' . $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 用户领取数据
+     */
+    public function claimAssignment(Request $request, int $assignmentId): JsonResponse
+    {
+        $user = Auth::user();
+        
+        try {
+            $assignment = $this->assignmentService->claimAssignment($assignmentId, $user->id);
+
+            return response()->json([
+                'success' => true,
+                'message' => '数据领取成功',
+                'data' => $assignment,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '数据领取失败：' . $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 用户完成数据处理
+     */
+    public function completeAssignment(Request $request, int $assignmentId): JsonResponse
+    {
+        $validated = $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+        
+        try {
+            $assignment = $this->assignmentService->completeAssignment(
+                $assignmentId, 
+                $user->id,
+                $validated['notes'] ?? null
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => '数据处理完成',
+                'data' => $assignment,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '完成数据处理失败：' . $e->getMessage(),
+            ], 400);
+        }
     }
 }

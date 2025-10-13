@@ -55,7 +55,7 @@ class DataAssignmentService
     }
 
     /**
-     * 创建数据分发
+     * 创建数据分发（单个公司）
      */
     public function createAssignment(array $dataRecordIds, int $companyId, User $assignedBy, ?int $assignedTo = null, ?string $notes = null): array
     {
@@ -63,13 +63,16 @@ class DataAssignmentService
 
         DB::transaction(function () use ($dataRecordIds, $companyId, $assignedBy, $assignedTo, $notes, &$assignments) {
             foreach ($dataRecordIds as $dataRecordId) {
-                // 检查是否已经分发给该公司
-                $existingAssignment = DataRecordAssignment::where('data_record_id', $dataRecordId)
-                    ->where('company_id', $companyId)
-                    ->first();
+                // 如果指定了领取人，检查是否已经分发给该公司的该用户
+                if ($assignedTo) {
+                    $existingAssignment = DataRecordAssignment::where('data_record_id', $dataRecordId)
+                        ->where('company_id', $companyId)
+                        ->where('assigned_to', $assignedTo)
+                        ->first();
 
-                if ($existingAssignment) {
-                    continue; // 跳过已分发的记录
+                    if ($existingAssignment) {
+                        continue; // 跳过已分发的记录
+                    }
                 }
 
                 $assignment = DataRecordAssignment::create([
@@ -80,6 +83,8 @@ class DataAssignmentService
                     'assigned_at' => now(),
                     'status' => 'pending',
                     'notes' => $notes,
+                    'is_claimed' => false,
+                    'is_completed' => false,
                 ]);
 
                 $assignments[] = $assignment;
@@ -90,7 +95,7 @@ class DataAssignmentService
     }
 
     /**
-     * 批量分发数据
+     * 批量分发数据到多个公司
      */
     public function batchAssign(array $dataRecordIds, array $companyIds, User $assignedBy, ?string $notes = null): array
     {
@@ -99,9 +104,46 @@ class DataAssignmentService
         DB::transaction(function () use ($dataRecordIds, $companyIds, $assignedBy, $notes, &$assignments) {
             foreach ($dataRecordIds as $dataRecordId) {
                 foreach ($companyIds as $companyId) {
-                    // 检查是否已经分发给该公司
+                    $assignment = DataRecordAssignment::create([
+                        'data_record_id' => $dataRecordId,
+                        'company_id' => $companyId,
+                        'assigned_by' => $assignedBy->id,
+                        'assigned_to' => $assignedBy->id, // 默认分发人为领取人
+                        'assigned_at' => now(),
+                        'status' => 'pending',
+                        'notes' => $notes,
+                        'is_claimed' => false,
+                        'is_completed' => false,
+                    ]);
+
+                    $assignments[] = $assignment;
+                }
+            }
+        });
+
+        return $assignments;
+    }
+
+    /**
+     * 批量分发数据到多个用户
+     */
+    public function batchAssignToUsers(array $dataRecordIds, array $userIds, User $assignedBy, ?string $notes = null): array
+    {
+        $assignments = [];
+
+        DB::transaction(function () use ($dataRecordIds, $userIds, $assignedBy, $notes, &$assignments) {
+            foreach ($dataRecordIds as $dataRecordId) {
+                foreach ($userIds as $userId) {
+                    // 获取用户信息以确定公司ID
+                    $user = User::find($userId);
+                    if (!$user) {
+                        continue;
+                    }
+
+                    // 检查是否已经分发给该公司的该用户
                     $existingAssignment = DataRecordAssignment::where('data_record_id', $dataRecordId)
-                        ->where('company_id', $companyId)
+                        ->where('company_id', $user->company_id)
+                        ->where('assigned_to', $userId)
                         ->first();
 
                     if ($existingAssignment) {
@@ -110,11 +152,14 @@ class DataAssignmentService
 
                     $assignment = DataRecordAssignment::create([
                         'data_record_id' => $dataRecordId,
-                        'company_id' => $companyId,
+                        'company_id' => $user->company_id,
                         'assigned_by' => $assignedBy->id,
+                        'assigned_to' => $userId,
                         'assigned_at' => now(),
                         'status' => 'pending',
                         'notes' => $notes,
+                        'is_claimed' => false,
+                        'is_completed' => false,
                     ]);
 
                     $assignments[] = $assignment;
@@ -144,10 +189,88 @@ class DataAssignmentService
             $updateData['started_at'] = now();
         } elseif ($status === 'completed' && $assignment->status !== 'completed') {
             $updateData['completed_at'] = now();
+            $updateData['is_completed'] = true;
         }
 
         $assignment->update($updateData);
         return $assignment->fresh();
+    }
+
+    /**
+     * 用户领取分发数据
+     */
+    public function claimAssignment(DataRecordAssignment $assignment, User $user): DataRecordAssignment
+    {
+        // 检查是否可以领取
+        if ($assignment->is_claimed) {
+            throw new \Exception('该数据已被领取');
+        }
+
+        if ($assignment->assigned_to !== $user->id) {
+            throw new \Exception('您无权领取该数据');
+        }
+
+        $assignment->update([
+            'is_claimed' => true,
+            'claimed_at' => now(),
+            'status' => 'in_progress',
+            'started_at' => now(),
+        ]);
+
+        return $assignment->fresh();
+    }
+
+    /**
+     * 完成数据处理
+     */
+    public function completeAssignment(DataRecordAssignment $assignment, User $user, ?string $notes = null): DataRecordAssignment
+    {
+        // 检查是否可以完成
+        if (!$assignment->is_claimed) {
+            throw new \Exception('请先领取该数据');
+        }
+
+        if ($assignment->assigned_to !== $user->id) {
+            throw new \Exception('您无权完成该数据处理');
+        }
+
+        if ($assignment->is_completed) {
+            throw new \Exception('该数据已完成处理');
+        }
+
+        $assignment->update([
+            'is_completed' => true,
+            'completed_at' => now(),
+            'status' => 'completed',
+            'notes' => $notes ?? $assignment->notes,
+        ]);
+
+        return $assignment->fresh();
+    }
+
+    /**
+     * 获取用户可领取的分发数据
+     */
+    public function getClaimableAssignments(User $user, array $filters = [], int $perPage = 15): LengthAwarePaginator
+    {
+        $query = DataRecordAssignment::with(['dataRecord', 'company', 'assignedBy'])
+            ->where('assigned_to', $user->id)
+            ->where('is_claimed', false);
+
+        // 状态过滤
+        if (!empty($filters['status'])) {
+            $query->byStatus($filters['status']);
+        }
+
+        // 日期范围过滤
+        if (!empty($filters['date_from'])) {
+            $query->where('assigned_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $query->where('assigned_at', '<=', $filters['date_to']);
+        }
+
+        return $query->orderBy('assigned_at', 'desc')->paginate($perPage);
     }
 
     /**
@@ -210,6 +333,17 @@ class DataAssignmentService
         }
 
         return $query->orderBy('created_at', 'desc')->paginate($perPage);
+    }
+
+    /**
+     * 检查数据记录是否已分发给指定公司的指定用户
+     */
+    public function isAssignedToUser(int $dataRecordId, int $companyId, int $userId): bool
+    {
+        return DataRecordAssignment::where('data_record_id', $dataRecordId)
+            ->where('company_id', $companyId)
+            ->where('assigned_to', $userId)
+            ->exists();
     }
 
     /**

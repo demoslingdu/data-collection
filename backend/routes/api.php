@@ -91,9 +91,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('data-assignments')->group(function () {
         Route::get('/', [DataAssignmentController::class, 'index']);                // 获取分发列表
         Route::post('/', [DataAssignmentController::class, 'store']);               // 创建数据分发
-        Route::post('batch-assign', [DataAssignmentController::class, 'batchAssign']); // 批量分发数据
+        Route::post('batch-assign', [DataAssignmentController::class, 'batchAssign']); // 批量分发数据到公司
+        Route::post('batch-assign-users', [DataAssignmentController::class, 'batchAssignToUsers']); // 批量分发数据到用户
         Route::get('statistics', [DataAssignmentController::class, 'statistics']);  // 获取分发统计信息
         Route::get('available-records', [DataAssignmentController::class, 'availableRecords']); // 获取可分发的数据记录
+        Route::get('claimable', [DataAssignmentController::class, 'getClaimableAssignments']); // 获取用户可领取的数据列表
+        Route::post('{assignment}/claim', [DataAssignmentController::class, 'claimAssignment']); // 用户领取数据
+        Route::post('{assignment}/complete', [DataAssignmentController::class, 'completeAssignment']); // 用户完成数据处理
         Route::get('{assignment}', [DataAssignmentController::class, 'show']);      // 获取分发详情
         Route::put('{assignment}', [DataAssignmentController::class, 'update']);    // 更新分发状态
         Route::delete('{assignment}', [DataAssignmentController::class, 'destroy']); // 删除分发记录（仅管理员）
