@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 /**
@@ -189,5 +190,30 @@ class DataRecord extends Model
     public function scopeDuplicate($query)
     {
         return $query->where('is_duplicate', true);
+    }
+
+    /**
+     * 数据记录的分发记录
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(DataRecordAssignment::class);
+    }
+
+    /**
+     * 获取数据记录在指定公司的分发状态
+     */
+    public function getAssignmentStatus(int $companyId): ?string
+    {
+        $assignment = $this->assignments()->where('company_id', $companyId)->first();
+        return $assignment ? $assignment->status : null;
+    }
+
+    /**
+     * 检查数据记录是否已分发给指定公司
+     */
+    public function isAssignedToCompany(int $companyId): bool
+    {
+        return $this->assignments()->where('company_id', $companyId)->exists();
     }
 }

@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\DataRecordController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\ImageController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\DataAssignmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,5 +74,28 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('admin')->prefix('statistics')->group(function () {
         Route::get('claims', [StatisticsController::class, 'claimStatistics']);      // 获取领取统计
         Route::get('collections', [StatisticsController::class, 'collectionStatistics']); // 获取收集统计
+    });
+
+    // 公司管理相关（仅管理员可访问）
+    Route::middleware('admin')->prefix('companies')->group(function () {
+        Route::get('/', [CompanyController::class, 'index']);                       // 获取公司列表
+        Route::post('/', [CompanyController::class, 'store']);                      // 创建公司
+        Route::get('active', [CompanyController::class, 'active']);                 // 获取启用的公司列表
+        Route::get('{company}', [CompanyController::class, 'show']);                // 获取公司详情
+        Route::put('{company}', [CompanyController::class, 'update']);              // 更新公司信息
+        Route::delete('{company}', [CompanyController::class, 'destroy']);          // 删除公司
+        Route::put('{company}/toggle-status', [CompanyController::class, 'toggleStatus']); // 切换公司状态
+    });
+
+    // 数据分发管理相关
+    Route::prefix('data-assignments')->group(function () {
+        Route::get('/', [DataAssignmentController::class, 'index']);                // 获取分发列表
+        Route::post('/', [DataAssignmentController::class, 'store']);               // 创建数据分发
+        Route::post('batch-assign', [DataAssignmentController::class, 'batchAssign']); // 批量分发数据
+        Route::get('statistics', [DataAssignmentController::class, 'statistics']);  // 获取分发统计信息
+        Route::get('available-records', [DataAssignmentController::class, 'availableRecords']); // 获取可分发的数据记录
+        Route::get('{assignment}', [DataAssignmentController::class, 'show']);      // 获取分发详情
+        Route::put('{assignment}', [DataAssignmentController::class, 'update']);    // 更新分发状态
+        Route::delete('{assignment}', [DataAssignmentController::class, 'destroy']); // 删除分发记录（仅管理员）
     });
 });

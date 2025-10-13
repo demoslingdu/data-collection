@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -28,6 +29,7 @@ class User extends Authenticatable
         'account',
         'password',
         'role',
+        'company_id',
     ];
 
     /**
@@ -74,5 +76,59 @@ class User extends Authenticatable
     public function claimedRecords(): HasMany
     {
         return $this->hasMany(DataRecord::class, 'claimer_id');
+    }
+
+    /**
+     * 用户所属公司
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * 用户分发的数据记录
+     */
+    public function assignedRecords(): HasMany
+    {
+        return $this->hasMany(DataRecordAssignment::class, 'assigned_by');
+    }
+
+    /**
+     * 用户处理的数据记录分发
+     */
+    public function processedAssignments(): HasMany
+    {
+        return $this->hasMany(DataRecordAssignment::class, 'assigned_to');
+    }
+
+    /**
+     * 检查用户是否为公司管理员
+     */
+    public function isCompanyAdmin(): bool
+    {
+        return $this->role === 'company_admin';
+    }
+
+    /**
+     * 检查用户是否为处理员
+     */
+    public function isProcessor(): bool
+    {
+        return $this->role === 'processor';
+    }
+
+    /**
+     * 获取用户角色描述
+     */
+    public function getRoleDescriptionAttribute(): string
+    {
+        return match($this->role) {
+            'admin' => '系统管理员',
+            'company_admin' => '公司管理员',
+            'processor' => '处理员',
+            'user' => '普通用户',
+            default => '未知角色',
+        };
     }
 }
