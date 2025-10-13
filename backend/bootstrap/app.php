@@ -17,12 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
         
-        // 添加CORS中间件到全局中间件
-        $middleware->web(append: [
+        // 添加CORS中间件到全局中间件（优先级最高）
+        $middleware->web(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
         
-        $middleware->api(append: [
+        $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
     })
