@@ -404,4 +404,25 @@ class DataAssignmentService
 
         return $query->orderBy('assigned_at', 'desc')->paginate($perPage);
     }
+
+    /**
+     * 获取用户已领取但未完成的分发数据
+     */
+    public function getUserClaimedIncompleteAssignments(User $user, array $filters = [], int $perPage = 15): LengthAwarePaginator
+    {
+        $query = DataRecordAssignment::with(['dataRecord', 'company'])
+            ->where('assigned_to', $user->id)
+            ->where('is_claimed', true)
+            ->where('is_completed', false);
+
+        // 日期范围过滤
+        if (!empty($filters['date_from'])) {
+            $query->where('assigned_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $query->where('assigned_at', '<=', $filters['date_to']);
+        }
+
+        return $query->orderBy('claimed_at', 'desc')->paginate($perPage);
+    }
 }

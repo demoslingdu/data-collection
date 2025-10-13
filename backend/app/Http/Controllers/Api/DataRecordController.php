@@ -518,7 +518,7 @@ class DataRecordController extends Controller
     }
 
     /**
-     * 获取未领取的数据记录列表
+     * 获取当前用户所属企业的未领取数据分发列表
      *
      * @param Request $request
      * @return JsonResponse
@@ -526,24 +526,49 @@ class DataRecordController extends Controller
     public function unclaimed(Request $request): JsonResponse
     {
         try {
-            $query = DataRecord::with(['submitter'])
-                ->where('is_claimed', false)
-                ->where('is_duplicate', false)
-                ->orderBy('created_at', 'desc');
-
-            // 分页
+            $user = Auth::user();
+            
+            // 获取分页参数
             $perPage = $request->get('per_page', 15);
-            $records = $query->paginate($perPage);
+            
+            // 使用 DataAssignmentService 获取可领取的分发数据
+            $assignments = $this->assignmentService->getClaimableAssignments($user, [], $perPage);
+            
+            // 转换数据格式以匹配前端期望的结构
+            $transformedData = $assignments->getCollection()->map(function ($assignment) {
+                return [
+                    'id' => $assignment->dataRecord->id,
+                    'image_url' => $assignment->dataRecord->image_url,
+                    'platform' => $assignment->dataRecord->platform,
+                    'platform_id' => $assignment->dataRecord->platform_id,
+                    'phone' => $assignment->dataRecord->phone,
+                    'submitter' => $assignment->dataRecord->submitter,
+                    'created_at' => $assignment->dataRecord->created_at,
+                    'assignment_id' => $assignment->id, // 添加分发记录ID用于后续操作
+                ];
+            });
+            
+            // 构建分页响应
+            $paginatedResponse = new \Illuminate\Pagination\LengthAwarePaginator(
+                $transformedData,
+                $assignments->total(),
+                $assignments->perPage(),
+                $assignments->currentPage(),
+                [
+                    'path' => $request->url(),
+                    'pageName' => 'page',
+                ]
+            );
 
-            return ApiResponse::paginated($records, '获取未领取数据记录列表成功');
+            return ApiResponse::paginated($paginatedResponse, '获取企业可领取数据列表成功');
 
         } catch (\Exception $e) {
-            return ApiResponse::serverError('获取未领取数据记录列表失败', $e->getMessage());
+            return ApiResponse::serverError('获取企业可领取数据列表失败', $e->getMessage());
         }
     }
 
     /**
-     * 获取当前用户已领取但未完成的数据记录列表
+     * 获取当前用户已领取但未完成的分发数据列表
      *
      * @param Request $request
      * @return JsonResponse
@@ -551,22 +576,45 @@ class DataRecordController extends Controller
     public function myClaimed(Request $request): JsonResponse
     {
         try {
-            $userId = Auth::id();
+            $user = Auth::user();
             
-            $query = DataRecord::with(['submitter'])
-                ->where('claimer_id', $userId)
-                ->where('is_claimed', true)
-                ->where('is_completed', false)
-                ->orderBy('created_at', 'desc');
-
-            // 分页
+            // 获取分页参数
             $perPage = $request->get('per_page', 15);
-            $records = $query->paginate($perPage);
+            
+            // 使用 DataAssignmentService 获取用户已领取未完成的分发数据
+            $assignments = $this->assignmentService->getUserClaimedIncompleteAssignments($user, [], $perPage);
+            
+            // 转换数据格式以匹配前端期望的结构
+            $transformedData = $assignments->getCollection()->map(function ($assignment) {
+                return [
+                    'id' => $assignment->dataRecord->id,
+                    'image_url' => $assignment->dataRecord->image_url,
+                    'platform' => $assignment->dataRecord->platform,
+                    'platform_id' => $assignment->dataRecord->platform_id,
+                    'phone' => $assignment->dataRecord->phone,
+                    'submitter' => $assignment->dataRecord->submitter,
+                    'created_at' => $assignment->dataRecord->created_at,
+                    'claimed_at' => $assignment->claimed_at,
+                    'assignment_id' => $assignment->id, // 添加分发记录ID用于后续操作
+                ];
+            });
+            
+            // 构建分页响应
+            $paginatedResponse = new \Illuminate\Pagination\LengthAwarePaginator(
+                $transformedData,
+                $assignments->total(),
+                $assignments->perPage(),
+                $assignments->currentPage(),
+                [
+                    'path' => $request->url(),
+                    'pageName' => 'page',
+                ]
+            );
 
-            return ApiResponse::paginated($records, '获取我已领取未完成数据记录列表成功');
+            return ApiResponse::paginated($paginatedResponse, '获取我已领取未完成数据列表成功');
 
         } catch (\Exception $e) {
-            return ApiResponse::serverError('获取我已领取未完成数据记录列表失败', $e->getMessage());
+            return ApiResponse::serverError('获取我已领取未完成数据列表失败', $e->getMessage());
         }
     }
 }
