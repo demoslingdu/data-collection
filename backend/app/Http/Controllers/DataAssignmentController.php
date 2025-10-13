@@ -37,10 +37,7 @@ class DataAssignmentController extends Controller
             $query->byCompany($user->company_id);
         }
 
-        // 状态过滤
-        if ($request->filled('status')) {
-            $query->byStatus($request->get('status'));
-        }
+        // 移除状态过滤（已删除status字段）
 
         // 公司过滤
         if ($request->filled('company_id')) {
@@ -80,7 +77,6 @@ class DataAssignmentController extends Controller
             'data_record_ids.*' => 'exists:data_records,id',
             'company_id' => 'required|exists:companies,id',
             'assigned_to' => 'required|exists:users,id',
-            'notes' => 'nullable|string',
         ]);
 
         $user = Auth::user();
@@ -89,9 +85,7 @@ class DataAssignmentController extends Controller
             $assignments = $this->assignmentService->createAssignment(
                 $validated['data_record_ids'],
                 $validated['company_id'],
-                $user,
-                $validated['assigned_to'],
-                $validated['notes'] ?? null
+                $validated['assigned_to']
             );
 
             return response()->json([
@@ -135,9 +129,7 @@ class DataAssignmentController extends Controller
     public function update(Request $request, DataRecordAssignment $assignment): JsonResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending,in_progress,completed,cancelled',
             'assigned_to' => 'nullable|exists:users,id',
-            'notes' => 'nullable|string',
         ]);
 
         // 权限检查
@@ -149,17 +141,12 @@ class DataAssignmentController extends Controller
             ], 403);
         }
 
-        // 更新状态时设置完成标记
-        $updateData = $validated;
-        if ($validated['status'] === 'completed' && $assignment->status !== 'completed') {
-            $updateData['is_completed'] = true;
-        }
-
-        $assignment->update($updateData);
+        // 更新分配信息
+        $assignment->update($validated);
 
         return response()->json([
             'success' => true,
-            'message' => '分发状态更新成功',
+            'message' => '分发记录更新成功',
             'data' => $assignment,
         ]);
     }
@@ -196,7 +183,6 @@ class DataAssignmentController extends Controller
             'data_record_ids.*' => 'exists:data_records,id',
             'company_ids' => 'required|array',
             'company_ids.*' => 'exists:companies,id',
-            'notes' => 'nullable|string',
         ]);
 
         $user = Auth::user();
@@ -204,9 +190,7 @@ class DataAssignmentController extends Controller
         try {
             $assignments = $this->assignmentService->batchAssign(
                 $validated['data_record_ids'],
-                $validated['company_ids'],
-                $user,
-                $validated['notes'] ?? null
+                $validated['company_ids']
             );
 
             return response()->json([
@@ -232,7 +216,6 @@ class DataAssignmentController extends Controller
             'data_record_ids.*' => 'exists:data_records,id',
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
-            'notes' => 'nullable|string',
         ]);
 
         $user = Auth::user();
@@ -240,9 +223,7 @@ class DataAssignmentController extends Controller
         try {
             $assignments = $this->assignmentService->batchAssignToUsers(
                 $validated['data_record_ids'],
-                $validated['user_ids'],
-                $user,
-                $validated['notes'] ?? null
+                $validated['user_ids']
             );
 
             return response()->json([
@@ -336,7 +317,6 @@ class DataAssignmentController extends Controller
     public function getClaimableAssignments(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'status' => 'nullable|string|in:pending,processing,completed',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
@@ -345,7 +325,6 @@ class DataAssignmentController extends Controller
         try {
             $assignments = $this->assignmentService->getClaimableAssignments(
                 $user->id,
-                $validated['status'] ?? null,
                 $validated['per_page'] ?? 15
             );
 
@@ -389,17 +368,12 @@ class DataAssignmentController extends Controller
      */
     public function completeAssignment(Request $request, int $assignmentId): JsonResponse
     {
-        $validated = $request->validate([
-            'notes' => 'nullable|string',
-        ]);
-
         $user = Auth::user();
         
         try {
             $assignment = $this->assignmentService->completeAssignment(
                 $assignmentId, 
-                $user->id,
-                $validated['notes'] ?? null
+                $user->id
             );
 
             return response()->json([

@@ -11,12 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id 分发ID
  * @property int $data_record_id 数据记录ID
  * @property int $company_id 公司ID
- * @property int $assigned_by 分发人ID
  * @property int $assigned_to 领取人ID
- * @property string $status 处理状态
- * @property string|null $notes 备注信息
  * @property \Carbon\Carbon $assigned_at 分发时间
-
  * @property bool $is_claimed 是否已领取
  * @property \Carbon\Carbon|null $claimed_at 领取时间
  * @property bool $is_completed 是否已完成
@@ -26,23 +22,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DataRecordAssignment extends Model
 {
     /**
-     * 处理状态常量
-     */
-    const STATUS_PENDING = 'pending';
-    const STATUS_IN_PROGRESS = 'in_progress';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_REJECTED = 'rejected';
-
-    /**
      * 可批量赋值的属性
      */
     protected $fillable = [
         'data_record_id',
         'company_id',
-        'assigned_by',
         'assigned_to',
-        'status',
-        'notes',
         'assigned_at',
         'is_claimed',
         'claimed_at',
@@ -77,13 +62,7 @@ class DataRecordAssignment extends Model
         return $this->belongsTo(Company::class);
     }
 
-    /**
-     * 获取分发人
-     */
-    public function assignedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'assigned_by');
-    }
+
 
     /**
      * 获取领取人
@@ -93,13 +72,7 @@ class DataRecordAssignment extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    /**
-     * 作用域：根据状态查询
-     */
-    public function scopeByStatus($query, string $status)
-    {
-        return $query->where('status', $status);
-    }
+
 
     /**
      * 作用域：根据公司查询
@@ -117,29 +90,7 @@ class DataRecordAssignment extends Model
         return $query->where('assigned_to', $userId);
     }
 
-    /**
-     * 作用域：待处理的分发
-     */
-    public function scopePending($query)
-    {
-        return $query->where('status', self::STATUS_PENDING);
-    }
 
-    /**
-     * 作用域：处理中的分发
-     */
-    public function scopeInProgress($query)
-    {
-        return $query->where('status', self::STATUS_IN_PROGRESS);
-    }
-
-    /**
-     * 作用域：已完成的分发
-     */
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', self::STATUS_COMPLETED);
-    }
 
     /**
      * 作用域：已领取的分发
@@ -173,30 +124,5 @@ class DataRecordAssignment extends Model
         return $query->where('is_completed', false);
     }
 
-    /**
-     * 获取状态描述
-     */
-    public function getStatusDescriptionAttribute(): string
-    {
-        return match($this->status) {
-            self::STATUS_PENDING => '待处理',
-            self::STATUS_IN_PROGRESS => '处理中',
-            self::STATUS_COMPLETED => '已完成',
-            self::STATUS_REJECTED => '已拒绝',
-            default => '未知状态',
-        };
-    }
 
-    /**
-     * 获取所有可用状态
-     */
-    public static function getAvailableStatuses(): array
-    {
-        return [
-            self::STATUS_PENDING => '待处理',
-            self::STATUS_IN_PROGRESS => '处理中',
-            self::STATUS_COMPLETED => '已完成',
-            self::STATUS_REJECTED => '已拒绝',
-        ];
-    }
 }

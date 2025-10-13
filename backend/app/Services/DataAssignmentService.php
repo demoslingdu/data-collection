@@ -28,10 +28,7 @@ class DataAssignmentService
             $query->byCompany($user->company_id);
         }
 
-        // 状态过滤
-        if (!empty($filters['status'])) {
-            $query->byStatus($filters['status']);
-        }
+        // 移除状态过滤（已删除status字段）
 
         // 公司过滤
         if (!empty($filters['company_id'])) {
@@ -57,11 +54,11 @@ class DataAssignmentService
     /**
      * 创建数据分发（单个公司）
      */
-    public function createAssignment(array $dataRecordIds, int $companyId, User $assignedBy, ?int $assignedTo = null, ?string $notes = null): array
+    public function createAssignment(array $dataRecordIds, int $companyId, ?int $assignedTo = null): array
     {
         $assignments = [];
 
-        DB::transaction(function () use ($dataRecordIds, $companyId, $assignedBy, $assignedTo, $notes, &$assignments) {
+        DB::transaction(function () use ($dataRecordIds, $companyId, $assignedTo, &$assignments) {
             foreach ($dataRecordIds as $dataRecordId) {
                 // 如果指定了领取人，检查是否已经分发给该公司的该用户
                 if ($assignedTo) {
@@ -78,11 +75,8 @@ class DataAssignmentService
                 $assignment = DataRecordAssignment::create([
                     'data_record_id' => $dataRecordId,
                     'company_id' => $companyId,
-                    'assigned_by' => $assignedBy->id,
                     'assigned_to' => $assignedTo,
                     'assigned_at' => now(),
-                    'status' => 'pending',
-                    'notes' => $notes,
                     'is_claimed' => false,
                     'is_completed' => false,
                 ]);
@@ -97,21 +91,18 @@ class DataAssignmentService
     /**
      * 批量分发数据到多个公司
      */
-    public function batchAssign(array $dataRecordIds, array $companyIds, User $assignedBy, ?string $notes = null): array
+    public function batchAssign(array $dataRecordIds, array $companyIds): array
     {
         $assignments = [];
 
-        DB::transaction(function () use ($dataRecordIds, $companyIds, $assignedBy, $notes, &$assignments) {
+        DB::transaction(function () use ($dataRecordIds, $companyIds, &$assignments) {
             foreach ($dataRecordIds as $dataRecordId) {
                 foreach ($companyIds as $companyId) {
                     $assignment = DataRecordAssignment::create([
                         'data_record_id' => $dataRecordId,
                         'company_id' => $companyId,
-                        'assigned_by' => $assignedBy->id,
-                        'assigned_to' => $assignedBy->id, // 默认分发人为领取人
+                        'assigned_to' => null, // 不指定默认领取人
                         'assigned_at' => now(),
-                        'status' => 'pending',
-                        'notes' => $notes,
                         'is_claimed' => false,
                         'is_completed' => false,
                     ]);
@@ -127,11 +118,11 @@ class DataAssignmentService
     /**
      * 批量分发数据到多个用户
      */
-    public function batchAssignToUsers(array $dataRecordIds, array $userIds, User $assignedBy, ?string $notes = null): array
+    public function batchAssignToUsers(array $dataRecordIds, array $userIds): array
     {
         $assignments = [];
 
-        DB::transaction(function () use ($dataRecordIds, $userIds, $assignedBy, $notes, &$assignments) {
+        DB::transaction(function () use ($dataRecordIds, $userIds, &$assignments) {
             foreach ($dataRecordIds as $dataRecordId) {
                 foreach ($userIds as $userId) {
                     // 获取用户信息以确定公司ID
@@ -153,11 +144,8 @@ class DataAssignmentService
                     $assignment = DataRecordAssignment::create([
                         'data_record_id' => $dataRecordId,
                         'company_id' => $user->company_id,
-                        'assigned_by' => $assignedBy->id,
                         'assigned_to' => $userId,
                         'assigned_at' => now(),
-                        'status' => 'pending',
-                        'notes' => $notes,
                         'is_claimed' => false,
                         'is_completed' => false,
                     ]);
@@ -171,25 +159,20 @@ class DataAssignmentService
     }
 
     /**
-     * 更新分发状态
+     * 更新分发分配
      */
-    public function updateAssignmentStatus(DataRecordAssignment $assignment, string $status, ?int $assignedTo = null, ?string $notes = null): DataRecordAssignment
+    public function updateAssignment(DataRecordAssignment $assignment, ?int $assignedTo = null): DataRecordAssignment
     {
-        $updateData = [
-            'status' => $status,
-            'notes' => $notes,
-        ];
+        $updateData = [];
 
         if ($assignedTo !== null) {
             $updateData['assigned_to'] = $assignedTo;
         }
 
-        // 更新状态时设置完成标记
-        if ($status === 'completed' && $assignment->status !== 'completed') {
-            $updateData['is_completed'] = true;
+        if (!empty($updateData)) {
+            $assignment->update($updateData);
         }
-
-        $assignment->update($updateData);
+        
         return $assignment->fresh();
     }
 
@@ -210,7 +193,6 @@ class DataAssignmentService
         $assignment->update([
             'is_claimed' => true,
             'claimed_at' => now(),
-            'status' => 'in_progress',
         ]);
 
         return $assignment->fresh();
@@ -219,7 +201,7 @@ class DataAssignmentService
     /**
      * 完成数据处理
      */
-    public function completeAssignment(DataRecordAssignment $assignment, User $user, ?string $notes = null): DataRecordAssignment
+    public function completeAssignment(DataRecordAssignment $assignment, User $user): DataRecordAssignment
     {
         // 检查是否可以完成
         if (!$assignment->is_claimed) {
@@ -236,8 +218,6 @@ class DataAssignmentService
 
         $assignment->update([
             'is_completed' => true,
-            'status' => 'completed',
-            'notes' => $notes ?? $assignment->notes,
         ]);
 
         return $assignment->fresh();
@@ -252,10 +232,7 @@ class DataAssignmentService
             ->where('assigned_to', $user->id)
             ->where('is_claimed', false);
 
-        // 状态过滤
-        if (!empty($filters['status'])) {
-            $query->byStatus($filters['status']);
-        }
+        // 移除状态过滤（已删除status字段）
 
         // 日期范围过滤
         if (!empty($filters['date_from'])) {
@@ -322,10 +299,7 @@ class DataAssignmentService
             $query->where('platform', $filters['platform']);
         }
 
-        // 状态过滤
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
+        // 移除状态过滤（已删除status字段）
 
         return $query->orderBy('created_at', 'desc')->paginate($perPage);
     }
@@ -352,15 +326,13 @@ class DataAssignmentService
     }
 
     /**
-     * 获取数据记录的分发状态
+     * 检查数据记录是否已分发给公司
      */
-    public function getAssignmentStatus(int $dataRecordId, int $companyId): ?string
+    public function isAssignedToCompany(int $dataRecordId, int $companyId): bool
     {
-        $assignment = DataRecordAssignment::where('data_record_id', $dataRecordId)
+        return DataRecordAssignment::where('data_record_id', $dataRecordId)
             ->where('company_id', $companyId)
-            ->first();
-
-        return $assignment ? $assignment->status : null;
+            ->exists();
     }
 
     /**
@@ -417,10 +389,7 @@ class DataAssignmentService
         $query = DataRecordAssignment::with(['dataRecord', 'company', 'assignedBy'])
             ->byAssignedTo($userId);
 
-        // 状态过滤
-        if (!empty($filters['status'])) {
-            $query->byStatus($filters['status']);
-        }
+        // 移除状态过滤（已删除status字段）
 
         // 日期范围过滤
         if (!empty($filters['date_from'])) {
