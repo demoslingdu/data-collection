@@ -17,6 +17,13 @@ export interface LoginData {
   password: string
 }
 
+// 修改密码接口
+export interface ChangePasswordData {
+  current_password: string
+  new_password: string
+  new_password_confirmation: string
+}
+
 // 用户信息接口
 export interface User {
   id: number
@@ -68,4 +75,11 @@ export const logout = (): Promise<ApiResponse> => {
  */
 export const getCurrentUser = (): Promise<ApiResponse<User>> => {
   return apiClient.get('/auth/user')
+}
+
+/**
+ * 修改密码
+ */
+export const changePassword = (data: ChangePasswordData): Promise<ApiResponse> => {
+  return apiClient.put('/auth/change-password', data)
 }

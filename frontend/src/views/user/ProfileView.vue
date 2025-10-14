@@ -285,6 +285,7 @@ import {
   IconFile,
   IconClockCircle
 } from '@arco-design/web-vue/es/icon'
+import { changePassword } from '@/api/auth'
 
 // 表单引用
 const profileFormRef = ref()
@@ -340,7 +341,19 @@ const passwordRules = {
   ],
   newPassword: [
     { required: true, message: '请输入新密码' },
-    { minLength: 6, message: '密码至少6个字符' }
+    { minLength: 6, message: '密码至少6个字符' },
+    { 
+      validator: (value: string, cb: Function) => {
+        // 密码强度验证：至少包含字母和数字
+        const hasLetter = /[a-zA-Z]/.test(value)
+        const hasNumber = /\d/.test(value)
+        if (value.length >= 6 && (!hasLetter || !hasNumber)) {
+          cb('密码必须包含字母和数字')
+        } else {
+          cb()
+        }
+      }
+    }
   ],
   confirmPassword: [
     { required: true, message: '请确认新密码' },
@@ -452,16 +465,47 @@ const handlePasswordSubmit = async () => {
     const valid = await passwordFormRef.value?.validate()
     if (!valid) return
 
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // 调用修改密码API
+    const response = await changePassword({
+      current_password: passwordForm.currentPassword,
+      new_password: passwordForm.newPassword,
+      new_password_confirmation: passwordForm.confirmPassword
+    })
     
-    Message.success('密码修改成功')
-    passwordModalVisible.value = false
-    passwordForm.currentPassword = ''
-    passwordForm.newPassword = ''
-    passwordForm.confirmPassword = ''
-  } catch (error) {
-    Message.error('密码修改失败，请重试')
+    if (response.success) {
+      Message.success('密码修改成功')
+      passwordModalVisible.value = false
+      // 清空表单
+      passwordForm.currentPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+      // 重置表单验证状态
+      passwordFormRef.value?.resetFields()
+    } else {
+      Message.error(response.message || '密码修改失败')
+    }
+  } catch (error: any) {
+    console.error('修改密码失败:', error)
+    
+    // 处理具体的错误信息
+    if (error.response?.data?.message) {
+      Message.error(error.response.data.message)
+    } else if (error.response?.status === 422) {
+      // 处理验证错误
+      const errors = error.response.data?.errors
+      if (errors) {
+        const firstError = Object.values(errors)[0] as string[]
+        Message.error(firstError[0] || '参数验证失败')
+      } else {
+        Message.error('参数验证失败，请检查输入')
+      }
+    } else if (error.response?.status === 401) {
+      Message.error('当前密码不正确')
+    } else if (error.response?.status === 400) {
+      Message.error('新密码不能与当前密码相同')
+    } else {
+      Message.error('密码修改失败，请重试')
+    }
   }
 }
 

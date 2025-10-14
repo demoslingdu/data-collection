@@ -151,4 +151,50 @@ class AuthController extends Controller
             return ApiResponse::serverError('获取用户信息失败', $e->getMessage());
         }
     }
+
+    /**
+     * 更改密码
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'current_password' => 'required|string',
+                'new_password' => 'required|string|min:6|confirmed',
+            ], [
+                'current_password.required' => '当前密码不能为空',
+                'new_password.required' => '新密码不能为空',
+                'new_password.min' => '新密码至少6位',
+                'new_password.confirmed' => '两次新密码不一致',
+            ]);
+
+            if ($validator->fails()) {
+                return ApiResponse::validationError($validator->errors());
+            }
+
+            $user = $request->user();
+
+            // 验证当前密码是否正确
+            if (!Hash::check($request->current_password, $user->password)) {
+                return ApiResponse::error('当前密码错误');
+            }
+
+            // 检查新密码是否与当前密码相同
+            if (Hash::check($request->new_password, $user->password)) {
+                return ApiResponse::error('新密码不能与当前密码相同');
+            }
+
+            // 更新密码
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+
+            return ApiResponse::success(null, '密码修改成功');
+
+        } catch (\Exception $e) {
+            return ApiResponse::serverError('密码修改失败', $e->getMessage());
+        }
+    }
 }
