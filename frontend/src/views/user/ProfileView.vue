@@ -475,10 +475,28 @@ const handleChangePassword = () => {
  * 处理密码提交
  */
 const handlePasswordSubmit = async () => {
+  console.log('开始提交密码修改')
+  console.log('表单数据:', passwordForm)
+  console.log('表单引用:', passwordFormRef.value)
+  
   try {
-    const valid = await passwordFormRef.value?.validate()
-    if (!valid) return
+    if (!passwordFormRef.value) {
+      console.error('表单引用未找到')
+      Message.error('表单初始化失败，请刷新页面重试')
+      return
+    }
 
+    console.log('开始表单验证...')
+    const valid = await passwordFormRef.value.validate()
+    console.log('表单验证结果:', valid)
+    
+    if (!valid) {
+      console.log('表单验证失败')
+      Message.error('请检查表单输入是否正确')
+      return
+    }
+
+    console.log('表单验证通过，开始提交...')
     passwordSubmitting.value = true
 
     // 调用修改密码API
