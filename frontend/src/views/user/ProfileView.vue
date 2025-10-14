@@ -358,10 +358,18 @@ const passwordRules = {
     { minLength: 6, message: '密码至少6个字符' },
     { 
       validator: (value: string, cb: Function) => {
+        if (!value) {
+          cb() // 空值由 required 规则处理
+          return
+        }
+        if (value.length < 6) {
+          cb() // 长度由 minLength 规则处理
+          return
+        }
         // 密码强度验证：至少包含字母和数字
         const hasLetter = /[a-zA-Z]/.test(value)
         const hasNumber = /\d/.test(value)
-        if (value.length >= 6 && (!hasLetter || !hasNumber)) {
+        if (!hasLetter || !hasNumber) {
           cb('密码必须包含字母和数字')
         } else {
           cb()
