@@ -237,8 +237,7 @@
     <a-modal
       v-model:visible="passwordModalVisible"
       title="修改密码"
-      @ok="handlePasswordSubmit"
-      @cancel="handlePasswordCancel"
+      :footer="false"
     >
       <a-form
         ref="passwordFormRef"
@@ -265,6 +264,20 @@
           />
         </a-form-item>
       </a-form>
+      
+      <!-- 自定义底部按钮 -->
+      <div style="text-align: right; margin-top: 20px;">
+        <a-button @click="handlePasswordCancel" style="margin-right: 8px;">
+          取消
+        </a-button>
+        <a-button 
+          type="primary" 
+          :loading="passwordSubmitting"
+          @click="handlePasswordSubmit"
+        >
+          确定
+        </a-button>
+      </div>
     </a-modal>
   </div>
 </template>
@@ -294,6 +307,7 @@ const passwordFormRef = ref()
 // 响应式数据
 const updating = ref(false)
 const passwordModalVisible = ref(false)
+const passwordSubmitting = ref(false)
 
 // 用户信息
 const userInfo = ref({
@@ -465,6 +479,8 @@ const handlePasswordSubmit = async () => {
     const valid = await passwordFormRef.value?.validate()
     if (!valid) return
 
+    passwordSubmitting.value = true
+
     // 调用修改密码API
     const response = await changePassword({
       current_password: passwordForm.currentPassword,
@@ -506,6 +522,8 @@ const handlePasswordSubmit = async () => {
     } else {
       Message.error('密码修改失败，请重试')
     }
+  } finally {
+    passwordSubmitting.value = false
   }
 }
 
