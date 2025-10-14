@@ -90,9 +90,8 @@
           size="medium"
         >
           <template #image="{ record }">
-            <div class="image-container large-image">
+            <div v-if="record.image_url" class="image-container large-image">
               <img
-                v-if="record.image_url"
                 :src="record.image_url"
                 :alt="`图片-${record.id}`"
                 class="optimized-image clickable-image"
@@ -102,10 +101,12 @@
                 @click="previewImage(record.image_url)"
                 loading="eager"
               />
-              <div v-if="record.image_url && !imageLoadStates[record.image_url]" class="image-placeholder">
+              <div v-if="!imageLoadStates[record.image_url]" class="image-placeholder">
                 <div class="loading-spinner"></div>
               </div>
-              <span v-if="!record.image_url" class="no-image">无图片</span>
+            </div>
+            <div v-else class="image-container small-image">
+              <span class="no-image">无图片</span>
             </div>
           </template>
           <template #platform="{ record }">
