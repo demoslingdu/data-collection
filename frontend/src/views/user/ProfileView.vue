@@ -487,26 +487,23 @@ const handlePasswordSubmit = async () => {
   console.log('表单数据:', passwordForm)
   console.log('表单引用:', passwordFormRef.value)
   
+  if (!passwordFormRef.value) {
+    console.error('表单引用未找到')
+    Message.error('表单初始化失败，请刷新页面重试')
+    return
+  }
+
   try {
-    if (!passwordFormRef.value) {
-      console.error('表单引用未找到')
-      Message.error('表单初始化失败，请刷新页面重试')
-      return
-    }
-
-    console.log('开始表单验证...')
-    const valid = await passwordFormRef.value.validate()
-    console.log('表单验证结果:', valid)
-    
-    if (!valid) {
-      console.log('表单验证失败')
-      Message.error('请检查表单输入是否正确')
-      return
-    }
-
-    console.log('表单验证通过，开始提交...')
     passwordSubmitting.value = true
+    
+    console.log('开始表单验证...')
+    // Arco Design Vue 的 validate() 方法：
+    // - 验证成功：Promise resolve
+    // - 验证失败：Promise reject
+    await passwordFormRef.value.validate()
+    console.log('表单验证通过')
 
+    console.log('开始提交API请求...')
     // 调用修改密码API
     const response = await changePassword({
       current_password: passwordForm.currentPassword,
@@ -527,9 +524,16 @@ const handlePasswordSubmit = async () => {
       Message.error(response.message || '密码修改失败')
     }
   } catch (error: any) {
+    // 检查是否是表单验证错误
+    if (error && typeof error === 'object' && 'errors' in error) {
+      console.log('表单验证失败:', error)
+      Message.error('请检查表单输入是否正确')
+      return
+    }
+    
     console.error('修改密码失败:', error)
     
-    // 处理具体的错误信息
+    // 处理API请求错误
     if (error.response?.data?.message) {
       Message.error(error.response.data.message)
     } else if (error.response?.status === 422) {
