@@ -776,11 +776,14 @@ const handleClaim = async (record: DataRecord) => {
     console.error('领取失败:', error)
     
     // 处理不同类型的错误
-    if (error.response?.data?.message) {
-      Message.error(error.response.data.message)
-    } else if (error.response?.data?.errors) {
+    if (error.response?.data?.errors) {
+      // 优先显示详细的验证错误信息
       const errorMessages = Object.values(error.response.data.errors).flat()
-      Message.error(errorMessages[0] as string)
+      // 显示所有错误信息，用换行符分隔
+      const allErrors = errorMessages.join('\n')
+      Message.error(allErrors)
+    } else if (error.response?.data?.message) {
+      Message.error(error.response.data.message)
     } else {
       Message.error('领取失败，请稍后重试')
     }
