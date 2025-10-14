@@ -274,7 +274,7 @@ const myClaimedColumns = [
     title: '图片',
     dataIndex: 'image_url',
     slotName: 'image',
-    width: 80,
+    width: 120,
     align: 'center'
   },
   {
@@ -863,15 +863,15 @@ onMounted(() => {
 }
 
 .image-container.large-image {
-  width: 60px;
-  height: 60px;
+  width: 200px;
+  height: 200px;
 }
 
 /* 优化的图片样式 */
 .optimized-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 4px;
   transition: all 0.3s ease;
   opacity: 0;
