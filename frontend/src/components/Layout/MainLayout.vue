@@ -48,13 +48,7 @@
           公司管理
         </a-menu-item>
 
-        <!-- 数据分发菜单 -->
-        <a-menu-item v-if="isAdmin" key="assignments">
-          <template #icon>
-            <icon-send />
-          </template>
-          数据分发
-        </a-menu-item>
+
 
         <a-menu-item v-if="isAdmin" key="profile">
           <template #icon>
@@ -191,15 +185,13 @@ const isAdmin = computed(() => authStore.isAdmin)
 
 // 页面标题映射
 const pageTitleMap: Record<string, string> = {
-  dashboard: '仪表板',
+  dashboard: '数据看板',
   'data-records': '数据记录',
   'data-record-create': '新建数据记录',
   'data-record-detail': '数据记录详情',
   companies: '公司管理',
-  assignments: '数据分发',
-  'assignment-detail': '分发详情',
   profile: '个人资料',
-  admin: '管理员控制台',
+  admin: '管理员面板',
   'claim-statistics': '领取统计',
   'collection-statistics': '收集统计'
 }
@@ -225,7 +217,6 @@ const handleMenuClick = (key: string) => {
     dashboard: '/dashboard',
     'data-records': '/data-records',
     companies: '/companies',
-    assignments: '/assignments',
     profile: '/profile',
     admin: '/admin',
     'claim-statistics': '/admin/claim-statistics',

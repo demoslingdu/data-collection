@@ -63,19 +63,7 @@ const router = createRouter({
           component: () => import('@/views/company/CompanyListView.vue'),
           meta: { requiresAuth: true, requiresAdmin: true }
         },
-        // 新增数据分发管理路由
-        {
-          path: 'assignments',
-          name: 'assignments',
-          component: () => import('@/views/assignment/AssignmentListView.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true }
-        },
-        {
-          path: 'assignments/:id',
-          name: 'assignment-detail',
-          component: () => import('@/views/assignment/AssignmentDetailView.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true }
-        },
+
         {
           path: 'admin',
           name: 'admin',
