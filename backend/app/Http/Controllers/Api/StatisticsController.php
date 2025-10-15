@@ -180,14 +180,21 @@ class StatisticsController extends Controller
             $completionRate = $claimedRecords > 0 ? round(($completedRecords / $claimedRecords) * 100, 2) : 0;
             $duplicateRate = $totalRecords > 0 ? round(($duplicateRecords / $totalRecords) * 100, 2) : 0;
 
-            // 用户提交统计 - 基于 data_records 表
+            // 用户提交统计 - 基于 data_records 表，同时关联 data_record_assignments 表获取已通过数据
             $userStatistics = DB::table('data_records')
                 ->join('users', 'data_records.submitter_id', '=', 'users.id')
+                ->leftJoin('data_record_assignments', function ($join) use ($companyId) {
+                    $join->on('data_records.id', '=', 'data_record_assignments.data_record_id')
+                         ->where('data_record_assignments.company_id', '=', $companyId)
+                         ->whereNotNull('data_record_assignments.assigned_to');
+                })
                 ->select([
                     'users.id as user_id',
                     'users.name as user_name',
-                    DB::raw('COUNT(data_records.id) as submitted_count'),
-                    DB::raw('SUM(CASE WHEN data_records.is_duplicate = 1 THEN 1 ELSE 0 END) as duplicate_count')
+                    DB::raw('COUNT(DISTINCT data_records.id) as submitted_count'),
+                    DB::raw('SUM(CASE WHEN data_records.is_duplicate = 1 THEN 1 ELSE 0 END) as duplicate_count'),
+                    DB::raw('COUNT(DISTINCT CASE WHEN data_record_assignments.assigned_to = users.id THEN data_record_assignments.id END) as claimed_count'),
+                    DB::raw('COUNT(DISTINCT CASE WHEN data_record_assignments.assigned_to = users.id AND data_record_assignments.is_completed = 1 THEN data_record_assignments.id END) as completed_count')
                 ])
                 ->when($date, function ($query, $date) {
                     return $query->whereDate('data_records.created_at', $date);
@@ -205,9 +212,16 @@ class StatisticsController extends Controller
                 ->orderByDesc('submitted_count')
                 ->get()
                 ->map(function ($item) {
+                    // 计算重复率
                     $item->duplicate_rate = $item->submitted_count > 0 
                         ? round(($item->duplicate_count / $item->submitted_count) * 100, 2) 
                         : 0;
+                    
+                    // 计算通过率（基于已领取的数据）
+                    $item->completion_rate = $item->claimed_count > 0 
+                        ? round(($item->completed_count / $item->claimed_count) * 100, 2) 
+                        : 0;
+                    
                     return $item;
                 });
 

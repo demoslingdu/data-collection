@@ -176,10 +176,18 @@
             showPageSize: true,
             pageSizeOptions: ['10', '20', '50', '100']
           }"
-          :scroll="{ x: 900 }"
+          :scroll="{ x: 1120 }"
         >
           <template #user_name="{ record }">
             <a-tag color="blue">{{ record.user_name }}</a-tag>
+          </template>
+          <template #completion_rate="{ record }">
+            <a-progress
+              :percent="record.completion_rate / 100"
+              :show-text="true"
+              :size="'small'"
+              :color="getCompletionProgressColor(record.completion_rate / 100)"
+            />
           </template>
           <template #duplicate_rate="{ record }">
             <a-progress
@@ -264,6 +272,23 @@ const tableColumns = [
     }
   },
   {
+    title: '已通过数',
+    dataIndex: 'completed_count',
+    width: 100,
+    sortable: {
+      sortDirections: ['ascend', 'descend']
+    }
+  },
+  {
+    title: '通过率',
+    dataIndex: 'completion_rate',
+    slotName: 'completion_rate',
+    width: 120,
+    sortable: {
+      sortDirections: ['ascend', 'descend']
+    }
+  },
+  {
     title: '重复数量',
     dataIndex: 'duplicate_count',
     width: 100,
@@ -290,6 +315,18 @@ const tableColumns = [
     }
   }
 ]
+
+/**
+ * 获取通过率进度条颜色（通过率越高越好）
+ * @param rate 通过率（0-1之间的小数）
+ * @returns 颜色值
+ */
+const getCompletionProgressColor = (rate: number): string => {
+  if (rate >= 0.90) return '#52c41a'  // 绿色：优秀
+  if (rate >= 0.80) return '#faad14' // 橙色：良好
+  if (rate >= 0.60) return '#ff7875' // 浅红：一般
+  return '#f5222d'                 // 红色：较差
+}
 
 /**
  * 获取重复率进度条颜色（重复率越低越好）
