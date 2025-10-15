@@ -171,11 +171,16 @@ class StatisticsController extends Controller
                 $assignmentQuery->whereDate('assigned_at', Carbon::today());
             }
 
-            // 总体统计
-            $totalRecords = $recordQuery->count(); // 基于 data_records 表统计总数据量
-            $claimedRecords = $assignmentQuery->count(); // 基于 data_record_assignments 表统计已分发的数据
-            $completedRecords = (clone $assignmentQuery)->where('is_completed', true)->count(); // 基于 data_record_assignments 表统计已完成的数据
-            $duplicateRecords = (clone $recordQuery)->where('is_duplicate', true)->count(); // 基于 data_records 表统计重复数据
+            // 总体统计 - 统一基于 data_record_assignments 表
+            $totalRecords = $assignmentQuery->count(); // 分发给当前公司的总数据量
+            $claimedRecords = (clone $assignmentQuery)->where('is_claimed', true)->count(); // 已被用户领取的数据量
+            $completedRecords = (clone $assignmentQuery)->where('is_completed', true)->count(); // 已完成的数据量
+            
+            // 重复数据统计 - 基于分发给当前公司的数据记录
+            $duplicateRecords = (clone $assignmentQuery)
+                ->join('data_records', 'data_record_assignments.data_record_id', '=', 'data_records.id')
+                ->where('data_records.is_duplicate', true)
+                ->count();
             
             $completionRate = $claimedRecords > 0 ? round(($completedRecords / $claimedRecords) * 100, 2) : 0;
             $duplicateRate = $totalRecords > 0 ? round(($duplicateRecords / $totalRecords) * 100, 2) : 0;
