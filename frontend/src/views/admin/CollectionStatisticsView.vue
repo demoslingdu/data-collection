@@ -272,7 +272,7 @@ const tableColumns = [
     }
   },
   {
-    title: '已通过数',
+    title: '提交通过数',
     dataIndex: 'completed_count',
     width: 100,
     sortable: {
@@ -280,7 +280,7 @@ const tableColumns = [
     }
   },
   {
-    title: '通过率',
+    title: '提交通过率',
     dataIndex: 'completion_rate',
     slotName: 'completion_rate',
     width: 120,

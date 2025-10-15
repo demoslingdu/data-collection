@@ -180,15 +180,19 @@ class StatisticsController extends Controller
             $completionRate = $claimedRecords > 0 ? round(($completedRecords / $claimedRecords) * 100, 2) : 0;
             $duplicateRate = $totalRecords > 0 ? round(($duplicateRecords / $totalRecords) * 100, 2) : 0;
 
-            // 用户提交统计 - 分别统计提交数据和处理数据
-            // 首先获取用户提交统计
-            $submissionStats = DB::table('data_records')
+            // 用户提交统计 - 统计用户提交的数据及其通过情况
+            $userStatistics = DB::table('data_records')
                 ->join('users', 'data_records.submitter_id', '=', 'users.id')
+                ->leftJoin('data_record_assignments', function($join) use ($companyId) {
+                    $join->on('data_records.id', '=', 'data_record_assignments.data_record_id')
+                         ->where('data_record_assignments.company_id', '=', $companyId);
+                })
                 ->select([
                     'users.id as user_id',
                     'users.name as user_name',
-                    DB::raw('COUNT(data_records.id) as submitted_count'),
-                    DB::raw('SUM(CASE WHEN data_records.is_duplicate = 1 THEN 1 ELSE 0 END) as duplicate_count')
+                    DB::raw('COUNT(DISTINCT data_records.id) as submitted_count'),
+                    DB::raw('SUM(CASE WHEN data_records.is_duplicate = 1 THEN 1 ELSE 0 END) as duplicate_count'),
+                    DB::raw('SUM(CASE WHEN data_record_assignments.is_completed = 1 THEN 1 ELSE 0 END) as completed_count')
                 ])
                 ->when($date, function ($query, $date) {
                     return $query->whereDate('data_records.created_at', $date);
@@ -203,87 +207,21 @@ class StatisticsController extends Controller
                     return $query->whereDate('data_records.created_at', Carbon::today());
                 })
                 ->groupBy('users.id', 'users.name')
+                ->orderByDesc('submitted_count')
                 ->get()
-                ->keyBy('user_id');
-
-            // 然后获取用户处理统计（基于data_record_assignments表）
-            $processingStats = DB::table('data_record_assignments')
-                ->join('users', 'data_record_assignments.assigned_to', '=', 'users.id')
-                ->select([
-                    'users.id as user_id',
-                    'users.name as user_name',
-                    DB::raw('COUNT(data_record_assignments.id) as claimed_count'),
-                    DB::raw('SUM(CASE WHEN data_record_assignments.is_completed = 1 THEN 1 ELSE 0 END) as completed_count')
-                ])
-                ->where('data_record_assignments.company_id', $companyId)
-                ->whereNotNull('data_record_assignments.assigned_to')
-                ->when($date, function ($query, $date) {
-                    return $query->whereDate('data_record_assignments.assigned_at', $date);
-                })
-                ->when($startDate && $endDate, function ($query) use ($startDate, $endDate) {
-                    return $query->whereBetween('data_record_assignments.assigned_at', [
-                        Carbon::parse($startDate)->startOfDay(),
-                        Carbon::parse($endDate)->endOfDay()
-                    ]);
-                })
-                ->when(!$date && !($startDate && $endDate), function ($query) {
-                    return $query->whereDate('data_record_assignments.assigned_at', Carbon::today());
-                })
-                ->groupBy('users.id', 'users.name')
-                ->get()
-                ->keyBy('user_id');
-
-            // 合并统计数据
-            $userStatistics = collect();
-            
-            // 合并提交统计和处理统计
-            foreach ($submissionStats as $userId => $submission) {
-                $processing = $processingStats->get($userId);
-                
-                $userStat = (object)[
-                    'user_id' => $submission->user_id,
-                    'user_name' => $submission->user_name,
-                    'submitted_count' => $submission->submitted_count,
-                    'duplicate_count' => $submission->duplicate_count,
-                    'claimed_count' => $processing ? $processing->claimed_count : 0,
-                    'completed_count' => $processing ? $processing->completed_count : 0,
-                ];
-                
-                // 计算重复率
-                $userStat->duplicate_rate = $userStat->submitted_count > 0 
-                    ? round(($userStat->duplicate_count / $userStat->submitted_count) * 100, 2) 
-                    : 0;
-                
-                // 计算通过率（基于已领取的数据）
-                $userStat->completion_rate = $userStat->claimed_count > 0 
-                    ? round(($userStat->completed_count / $userStat->claimed_count) * 100, 2) 
-                    : 0;
-                
-                $userStatistics->push($userStat);
-            }
-            
-            // 添加只有处理数据但没有提交数据的用户
-            foreach ($processingStats as $userId => $processing) {
-                if (!$submissionStats->has($userId)) {
-                    $userStat = (object)[
-                        'user_id' => $processing->user_id,
-                        'user_name' => $processing->user_name,
-                        'submitted_count' => 0,
-                        'duplicate_count' => 0,
-                        'claimed_count' => $processing->claimed_count,
-                        'completed_count' => $processing->completed_count,
-                        'duplicate_rate' => 0,
-                        'completion_rate' => $processing->claimed_count > 0 
-                            ? round(($processing->completed_count / $processing->claimed_count) * 100, 2) 
-                            : 0,
-                    ];
+                ->map(function ($user) {
+                    // 计算重复率
+                    $user->duplicate_rate = $user->submitted_count > 0 
+                        ? round(($user->duplicate_count / $user->submitted_count) * 100, 2) 
+                        : 0;
                     
-                    $userStatistics->push($userStat);
-                }
-            }
-            
-            // 按提交数量排序
-            $userStatistics = $userStatistics->sortByDesc('submitted_count')->values();
+                    // 计算通过率（基于提交的数据）
+                    $user->completion_rate = $user->submitted_count > 0 
+                        ? round(($user->completed_count / $user->submitted_count) * 100, 2) 
+                        : 0;
+                    
+                    return $user;
+                });
 
             $result = [
                 'total_records' => $totalRecords,
