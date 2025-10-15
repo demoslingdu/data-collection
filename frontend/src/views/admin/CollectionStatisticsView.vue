@@ -182,20 +182,28 @@
             <a-tag color="blue">{{ record.user_name }}</a-tag>
           </template>
           <template #completion_rate="{ record }">
-            <a-progress
-              :percent="record.completion_rate / 100"
-              :show-text="true"
-              :size="'small'"
-              :color="getCompletionProgressColor(record.completion_rate / 100)"
-            />
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <a-progress
+                :percent="record.completion_rate / 100"
+                :show-text="false"
+                :size="'small'"
+                :color="getCompletionProgressColor(record.completion_rate / 100)"
+                style="flex: 1;"
+              />
+              <span style="font-size: 12px; color: #666; min-width: 45px;">{{ record.completion_rate.toFixed(2) }}%</span>
+            </div>
           </template>
           <template #duplicate_rate="{ record }">
-            <a-progress
-              :percent="record.duplicate_rate / 100"
-              :show-text="true"
-              :size="'small'"
-              :color="getDuplicateProgressColor(record.duplicate_rate / 100)"
-            />
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <a-progress
+                :percent="record.duplicate_rate / 100"
+                :show-text="false"
+                :size="'small'"
+                :color="getDuplicateProgressColor(record.duplicate_rate / 100)"
+                style="flex: 1;"
+              />
+              <span style="font-size: 12px; color: #666; min-width: 45px;">{{ record.duplicate_rate.toFixed(2) }}%</span>
+            </div>
           </template>
           <template #quality_score="{ record }">
             <a-tag :color="getQualityTagColor(100 - record.duplicate_rate)">
