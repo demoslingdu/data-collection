@@ -22,6 +22,17 @@
             </template>
           </a-input>
         </a-form-item>
+        <a-form-item label="ID查询">
+          <a-input-number
+            v-model="searchForm.id"
+            placeholder="请输入记录ID"
+            style="width: 150px"
+            :min="1"
+            :precision="0"
+            allow-clear
+            @press-enter="handleSearch"
+          />
+        </a-form-item>
         <a-form-item label="平台">
           <a-select
             v-model="searchForm.platform"
@@ -152,6 +163,7 @@ const loading = ref(false)
 // 搜索表单
 const searchForm = reactive({
   keyword: '',
+  id: undefined,
   platform: '',
   dateRange: []
 })
@@ -270,6 +282,7 @@ const handleSearch = () => {
  */
 const handleReset = () => {
   searchForm.keyword = ''
+  searchForm.id = undefined
   searchForm.platform = ''
   searchForm.dateRange = []
   pagination.current = 1
@@ -309,6 +322,11 @@ const loadData = async () => {
     // 添加搜索条件
     if (searchForm.keyword) {
       params.search = searchForm.keyword
+    }
+    
+    // ID精确查询
+    if (searchForm.id) {
+      params.id = searchForm.id
     }
     
     if (searchForm.platform) {

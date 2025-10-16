@@ -48,6 +48,11 @@ class DataRecordController extends Controller
         try {
             $query = DataRecord::with(['submitter', 'claimer']);
 
+            // ID精确查询（优先级最高）
+            if ($request->has('id') && $request->id) {
+                $query->where('id', $request->id);
+            }
+
             // 按平台筛选
             if ($request->has('platform') && $request->platform) {
                 $query->where('platform', $request->platform);
