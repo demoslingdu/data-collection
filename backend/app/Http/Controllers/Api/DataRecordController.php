@@ -476,26 +476,65 @@ class DataRecordController extends Controller
     public function markDuplicate(int $id): JsonResponse
     {
         try {
-            $record = DataRecord::find($id);
+            // 使用事务确保数据一致性
+            return DB::transaction(function () use ($id) {
+                $record = DataRecord::find($id);
 
-            if (!$record) {
-                return ApiResponse::notFound('数据记录不存在');
-            }
+                if (!$record) {
+                    return ApiResponse::notFound('数据记录不存在');
+                }
 
-            // 检查权限：只有领取者可以标记重复
-            if ($record->claimer_id !== Auth::id()) {
-                return ApiResponse::forbidden('您没有权限标记此记录为重复');
-            }
+                $currentUserId = Auth::id();
+                $userCompanyId = Auth::user()->company_id;
 
-            $record->update([
-                'is_duplicate' => true,
-            ]);
+                // 检查权限：基于 data_record_assignments 表验证
+                $assignment = DataRecordAssignment::where('data_record_id', $id)
+                    ->where('company_id', $userCompanyId)
+                    ->where('assigned_to', $currentUserId)
+                    ->where('is_claimed', true)
+                    ->first();
 
-            $record->load(['submitter', 'claimer']);
+                if (!$assignment) {
+                    return ApiResponse::forbidden('您没有权限标记此记录为重复，请确保您已领取该数据');
+                }
 
-            return ApiResponse::updated($record, '标记重复记录成功');
+                if ($assignment->is_completed) {
+                    return ApiResponse::badRequest('该数据已完成处理，无法标记为重复');
+                }
+
+                // 同时更新 data_records 和 data_record_assignments 表
+                $record->update([
+                    'is_duplicate' => true,
+                ]);
+
+                $assignment->update([
+                    'is_completed' => true, // 标记为已完成，状态为重复
+                ]);
+
+                // 加载关联数据，包含分发记录信息
+                $record->load([
+                    'submitter', 
+                    'claimer',
+                    'assignments' => function ($query) use ($userCompanyId) {
+                        $query->where('company_id', $userCompanyId)
+                              ->with('assignedTo');
+                    }
+                ]);
+
+                return ApiResponse::updated([
+                    'record' => $record,
+                    'assignment' => $assignment->fresh(['assignedTo']),
+                ], '标记重复记录成功');
+            });
 
         } catch (\Exception $e) {
+            Log::error('标记重复记录失败', [
+                'data_record_id' => $id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return ApiResponse::serverError('标记重复记录失败', $e->getMessage());
         }
     }
