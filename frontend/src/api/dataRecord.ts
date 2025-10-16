@@ -158,6 +158,13 @@ export const completeDataRecord = (id: number): Promise<ApiResponse<DataRecord>>
 }
 
 /**
+ * 标记数据记录为重复
+ */
+export const markDuplicate = (id: number): Promise<ApiResponse<DataRecord>> => {
+  return apiClient.post(`/data-records/${id}/mark-duplicate`)
+}
+
+/**
  * 获取统计信息
  */
 export const getStatistics = (): Promise<ApiResponse<Statistics>> => {
@@ -189,6 +196,7 @@ export const dataRecordApi = {
   deleteDataRecord,
   claimDataRecord,
   completeDataRecord,
+  markDuplicate,
   getStatistics,
   getUnclaimedRecords,
   getMyClaimedRecords

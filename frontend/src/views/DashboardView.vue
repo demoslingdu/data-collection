@@ -124,16 +124,28 @@
             <span v-else class="phone-empty">-</span>
           </template>
           <template #actions="{ record }">
-            <a-button 
-              type="outline" 
-              size="mini" 
-              status="success"
-              :loading="completingIds.has(record.id)"
-              :disabled="completingIds.has(record.id)"
-              @click="handleComplete(record)"
-            >
-              {{ completingIds.has(record.id) ? '完成中...' : '已通过' }}
-            </a-button>
+            <a-space>
+              <a-button 
+                type="outline" 
+                size="mini" 
+                status="success"
+                :loading="completingIds.has(record.id)"
+                :disabled="completingIds.has(record.id) || markingDuplicateIds.has(record.id)"
+                @click="handleComplete(record)"
+              >
+                {{ completingIds.has(record.id) ? '完成中...' : '已通过' }}
+              </a-button>
+              <a-button 
+                type="outline" 
+                size="mini" 
+                status="warning"
+                :loading="markingDuplicateIds.has(record.id)"
+                :disabled="markingDuplicateIds.has(record.id) || completingIds.has(record.id)"
+                @click="handleMarkDuplicate(record)"
+              >
+                {{ markingDuplicateIds.has(record.id) ? '标记中...' : '标记重复' }}
+              </a-button>
+            </a-space>
           </template>
           <template #empty>
             <a-empty description="暂无待完成数据" />
@@ -192,6 +204,7 @@ const previewImageUrl = ref('')
 // 按钮加载状态
 const claimingIds = ref<Set<number>>(new Set())
 const completingIds = ref<Set<number>>(new Set())
+const markingDuplicateIds = ref<Set<number>>(new Set())
 
 // 分页配置
 const unclaimedPagination = reactive({
@@ -303,7 +316,7 @@ const myClaimedColumns = [
   {
     title: '操作',
     slotName: 'actions',
-    width: 120,
+    width: 180,
     align: 'center'
   }
 ]
@@ -738,6 +751,49 @@ const handleComplete = async (record: DataRecord) => {
   } finally {
     // 清除加载状态
     completingIds.value.delete(record.id)
+  }
+}
+
+/**
+ * 处理标记重复操作
+ */
+const handleMarkDuplicate = async (record: DataRecord) => {
+  // 防止重复点击
+  if (markingDuplicateIds.value.has(record.id)) {
+    return
+  }
+  
+  try {
+    // 设置加载状态
+    markingDuplicateIds.value.add(record.id)
+    
+    // 调用后端API进行标记重复操作
+    const response = await dataRecordApi.markDuplicate(record.id)
+    
+    if (response.data) {
+      Message.success('标记重复成功')
+      
+      // 刷新我已领取未完成数据表格
+      loadMyClaimedData()
+    }
+  } catch (error: any) {
+    console.error('标记重复失败:', error)
+    
+    // 处理不同类型的错误
+    if (error.response?.data?.errors) {
+      // 优先显示详细的验证错误信息
+      const errorMessages = Object.values(error.response.data.errors).flat()
+      // 显示所有错误信息，用换行符分隔
+      const allErrors = errorMessages.join('\n')
+      Message.error(allErrors)
+    } else if (error.response?.data?.message) {
+      Message.error(error.response.data.message)
+    } else {
+      Message.error('标记重复失败，请稍后重试')
+    }
+  } finally {
+    // 清除加载状态
+    markingDuplicateIds.value.delete(record.id)
   }
 }
 

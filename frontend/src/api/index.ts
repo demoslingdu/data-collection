@@ -4,8 +4,10 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
-// API 基础配置 - 生产环境
-const API_BASE_URL = 'https://collect-api.wlai.vip/api'
+// API 基础配置 - 根据环境自动切换
+const API_BASE_URL = import.meta.env.DEV 
+  ? 'http://localhost:8000/api'  // 开发环境
+  : 'https://collect-api.wlai.vip/api'  // 生产环境
 
 // 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
