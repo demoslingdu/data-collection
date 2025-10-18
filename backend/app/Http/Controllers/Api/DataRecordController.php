@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 /**
  * 数据记录控制器
@@ -188,6 +189,9 @@ class DataRecordController extends Controller
             });
 
             $record->load(['submitter', 'claimer']);
+
+            // 同步数据到外部接口
+            $this->syncToExternalApi($record);
 
             return ApiResponse::created($record, '创建数据记录成功');
 
@@ -688,6 +692,89 @@ class DataRecordController extends Controller
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取我已领取未完成数据列表失败', $e->getMessage());
+        }
+    }
+
+    /**
+     * 同步数据到外部接口
+     * 
+     * @param DataRecord $record 数据记录
+     * @return void
+     */
+    private function syncToExternalApi(DataRecord $record): void
+    {
+        try {
+            // 检查是否有手机号
+            if (empty($record->phone)) {
+                Log::info('数据记录没有手机号，跳过外部接口同步', [
+                    'record_id' => $record->id
+                ]);
+                return;
+            }
+
+            // 检查手机号是否重复（在过去已同步的记录中）
+            $existingSyncedRecord = DataRecord::where('phone', $record->phone)
+                ->where('id', '!=', $record->id)
+                ->where('synced_to_external', true)
+                ->first();
+
+            if ($existingSyncedRecord) {
+                Log::info('手机号已存在于已同步记录中，跳过外部接口同步', [
+                    'record_id' => $record->id,
+                    'phone' => $record->phone,
+                    'existing_record_id' => $existingSyncedRecord->id
+                ]);
+                return;
+            }
+
+            // 准备同步数据
+            $syncData = [
+                'sn' => $record->phone,
+                'sn_info' => '',
+                'buy_nick' => '',
+                'buy_id' => '',
+                'buy_price' => '',
+                'sell_name' => '抖音',
+                'create_time' => '',
+                'pay_time' => '',
+                'info' => '',
+                'mobile' => $record->phone,
+                'addr' => '',
+                'buyer_name' => '',
+                'remark' => '',
+                'order_status' => '',
+                'status' => 12
+            ];
+
+            // 发送请求到外部接口
+            $response = Http::timeout(30)->post('http://47.98.194.116:2000/api/gfData', $syncData);
+
+            if ($response->successful()) {
+                // 标记为已同步
+                $record->update(['synced_to_external' => true]);
+                
+                Log::info('数据记录同步到外部接口成功', [
+                    'record_id' => $record->id,
+                    'phone' => $record->phone,
+                    'response_status' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
+            } else {
+                Log::error('数据记录同步到外部接口失败', [
+                    'record_id' => $record->id,
+                    'phone' => $record->phone,
+                    'response_status' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('数据记录同步到外部接口异常', [
+                'record_id' => $record->id,
+                'phone' => $record->phone ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 }

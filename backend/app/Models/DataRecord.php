@@ -30,6 +30,7 @@ class DataRecord extends Model
         'is_completed',
         'claimer_id',
         'is_duplicate',
+        'synced_to_external',
     ];
 
     /**
@@ -41,6 +42,7 @@ class DataRecord extends Model
         'is_claimed' => 'boolean',
         'is_completed' => 'boolean',
         'is_duplicate' => 'boolean',
+        'synced_to_external' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
