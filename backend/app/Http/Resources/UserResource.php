@@ -33,6 +33,7 @@ class UserResource extends JsonResource
 
     /**
      * 将时间格式化为北京时间
+     * 格式：2025-10-20 13:30:29（简洁的日期时间格式）
      * 
      * @param \Carbon\Carbon|null $dateTime
      * @return string|null
@@ -43,7 +44,7 @@ class UserResource extends JsonResource
             return null;
         }
 
-        // 将时间转换为北京时区并格式化为ISO 8601格式
-        return $dateTime->setTimezone('Asia/Shanghai')->format('Y-m-d\TH:i:s.u\+08:00');
+        // 将时间转换为北京时区并格式化为简洁的日期时间格式
+        return $dateTime->setTimezone('Asia/Shanghai')->format('Y-m-d H:i:s');
     }
 }
