@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Http\Resources\DataRecordResource;
 use App\Models\DataRecord;
 use App\Models\DataRecordAssignment;
 use App\Models\Company;
@@ -88,7 +89,10 @@ class DataRecordController extends Controller
             $perPage = $request->get('per_page', 15);
             $records = $query->paginate($perPage);
 
-            return ApiResponse::paginated($records, '获取数据记录列表成功');
+            // 使用资源类格式化响应，确保时间字段显示为北京时间
+            $formattedRecords = DataRecordResource::collection($records)->response()->getData();
+
+            return ApiResponse::paginated($formattedRecords, '获取数据记录列表成功');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取数据记录列表失败', $e->getMessage());
@@ -193,7 +197,8 @@ class DataRecordController extends Controller
             // 同步数据到外部接口
             $this->syncToExternalApi($record);
 
-            return ApiResponse::created($record, '创建数据记录成功');
+            // 使用资源类格式化响应，确保时间字段显示为北京时间
+            return ApiResponse::created(new DataRecordResource($record), '创建数据记录成功');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('创建数据记录失败', $e->getMessage());
@@ -215,7 +220,8 @@ class DataRecordController extends Controller
                 return ApiResponse::notFound('数据记录不存在');
             }
 
-            return ApiResponse::success($record, '获取数据记录详情成功');
+            // 使用资源类格式化响应，确保时间字段显示为北京时间
+            return ApiResponse::success(new DataRecordResource($record), '获取数据记录详情成功');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取数据记录详情失败', $e->getMessage());
@@ -294,7 +300,8 @@ class DataRecordController extends Controller
             $record->update($updateData);
             $record->load(['submitter', 'claimer']);
 
-            return ApiResponse::updated($record, '更新数据记录成功');
+            // 使用资源类格式化响应，确保时间字段显示为北京时间
+            return ApiResponse::updated(new DataRecordResource($record), '更新数据记录成功');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('更新数据记录失败', $e->getMessage());
@@ -423,7 +430,8 @@ class DataRecordController extends Controller
             $record->claimer_id = $user->id;
             $record->claimer = $user;
 
-            return ApiResponse::updated($record, '领取数据记录成功');
+            // 使用资源类格式化响应，确保时间字段显示为北京时间
+            return ApiResponse::updated(new DataRecordResource($record), '领取数据记录成功');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('领取数据记录失败', $e->getMessage());
@@ -530,8 +538,9 @@ class DataRecordController extends Controller
                     }
                 ]);
 
+                // 使用资源类格式化响应，确保时间字段显示为北京时间
                 return ApiResponse::updated([
-                    'record' => $record,
+                    'record' => new DataRecordResource($record),
                     'assignment' => $assignment->fresh(['assignedTo']),
                 ], '标记重复记录成功');
             });
@@ -611,16 +620,19 @@ class DataRecordController extends Controller
             // 使用 DataAssignmentService 获取可领取的分发数据
             $assignments = $this->assignmentService->getClaimableAssignments($user, [], $perPage);
             
-            // 转换数据格式以匹配前端期望的结构
+            // 转换数据格式以匹配前端期望的结构，使用资源类格式化时间
             $transformedData = $assignments->getCollection()->map(function ($assignment) {
+                $recordResource = new DataRecordResource($assignment->dataRecord);
+                $recordData = $recordResource->toArray(request());
+                
                 return [
-                    'id' => $assignment->dataRecord->id,
-                    'image_url' => $assignment->dataRecord->image_url,
-                    'platform' => $assignment->dataRecord->platform,
-                    'platform_id' => $assignment->dataRecord->platform_id,
-                    'phone' => $assignment->dataRecord->phone,
-                    'submitter' => $assignment->dataRecord->submitter,
-                    'created_at' => $assignment->dataRecord->created_at,
+                    'id' => $recordData['id'],
+                    'image_url' => $recordData['image_url'],
+                    'platform' => $recordData['platform'],
+                    'platform_id' => $recordData['platform_id'],
+                    'phone' => $recordData['phone'],
+                    'submitter' => $recordData['submitter'],
+                    'created_at' => $recordData['created_at'], // 已经格式化为北京时间
                     'assignment_id' => $assignment->id, // 添加分发记录ID用于后续操作
                 ];
             });
