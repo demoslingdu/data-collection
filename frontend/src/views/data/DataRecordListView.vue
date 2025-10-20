@@ -175,16 +175,18 @@ const pagination = reactive({
   total: 156
 })
 
-// 计算属性：分页配置
+// 计算属性：分页配置 - 使用Arco Design Vue最佳实践
 const paginationConfig = computed(() => ({
   current: pagination.current,
   pageSize: pagination.pageSize,
   total: pagination.total,
-  showTotal: true,
-  showPageSize: true,
-  pageSizeOptions: ['10', '20', '50', '100'],
-  showJumper: true,
-  size: 'large'
+  showTotal: true,                                    // 显示总数信息
+  showPageSize: true,                                 // 显示页面大小选择器
+  pageSizeOptions: ['10', '20', '50', '100'],        // 页面大小选项
+  showJumper: true,                                   // 显示快速跳转
+  size: 'large',                                      // 分页器大小
+  hideOnSinglePage: false,                           // 单页时也显示分页器
+  simple: false                                       // 使用完整分页器而非简单模式
 }))
 
 // 表格列配置
@@ -342,9 +344,16 @@ const loadData = async () => {
     const response = await dataRecordApi.getList(params)
     
     if (response.data) {
+      // 设置表格数据
       tableData.value = response.data.data
-      pagination.total = response.data.total
-      pagination.current = response.data.current_page
+      
+      // 修复分页信息：从meta对象中正确获取分页数据
+      if (response.data.meta) {
+        pagination.total = response.data.meta.total        // 总记录数
+        pagination.current = response.data.meta.current_page  // 当前页码
+        // 确保页面大小与后端返回的一致
+        pagination.pageSize = response.data.meta.per_page || pagination.pageSize
+      }
     }
   } catch (error) {
     console.error('加载数据失败:', error)

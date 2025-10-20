@@ -86,9 +86,35 @@ export interface DataRecordQuery {
   claimer_id?: number
 }
 
-// 分页响应格式
+// 分页链接信息接口
+export interface PaginationLinks {
+  first: string | null
+  last: string | null
+  prev: string | null
+  next: string | null
+}
+
+// 分页元数据接口 - 包含完整的分页信息
+export interface PaginationMeta {
+  current_page: number    // 当前页码
+  from: number           // 当前页第一条记录的序号
+  last_page: number      // 最后一页页码
+  per_page: number       // 每页记录数
+  to: number             // 当前页最后一条记录的序号
+  total: number          // 总记录数
+  links: Array<{         // 分页链接数组
+    url: string | null
+    label: string
+    active: boolean
+  }>
+}
+
+// 分页响应格式 - 修复类型定义以匹配Laravel分页响应结构
 export interface PaginatedResponse<T> {
-  data: T[]
+  data: T[]                    // 数据数组
+  links: PaginationLinks       // 分页链接
+  meta: PaginationMeta         // 分页元数据
+  // 保持向后兼容性：保留原有的直接属性
   current_page: number
   last_page: number
   per_page: number
