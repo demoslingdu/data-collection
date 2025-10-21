@@ -127,24 +127,46 @@ class DataRecordController extends Controller
                 return ApiResponse::validationError($validator->errors());
             }
 
-            // 检查是否已存在相同平台和平台ID的记录
-            $existingRecord = DataRecord::where('platform', $request->platform)
-                ->where('platform_id', $request->platform_id)
-                ->orderBy('created_at', 'desc')
-                ->first();
-
-            // 默认不标记为重复
+            // 根据数据类型选择不同的重复检查策略
+            $existingRecord = null;
             $isDuplicate = false;
 
-            if ($existingRecord) {
-                // 计算时间差（天数）
-                $daysDiff = now()->diffInDays($existingRecord->created_at);
-                
-                // 如果在3天内（包括当天），标记为重复
-                if ($daysDiff <= 3) {
-                    $isDuplicate = true;
+            // 判断是否有图片URL，决定使用哪种排重策略
+            if (empty($request->image_url)) {
+                // 情况1：没有图片URL，只有手机号时，针对手机号进行排重
+                if (!empty($request->phone)) {
+                    $existingRecord = DataRecord::where('phone', $request->phone)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                    
+                    // if ($existingRecord) {
+                    //     // 计算时间差（天数）
+                    //     $daysDiff = now()->diffInDays($existingRecord->created_at);
+                        
+                    //     // 如果在3天内（包括当天），标记为重复
+                    //     if ($daysDiff <= 3) {
+                    //         $isDuplicate = true;
+                    //     }
+                    //     // 超过3天的算新客资，不标记重复
+                    // }
                 }
-                // 超过3天的算新客资，不标记重复（$isDuplicate 保持 false）
+            } else {
+                // 情况2：有图片URL时，使用原来的平台和平台ID进行排重
+                $existingRecord = DataRecord::where('platform', $request->platform)
+                    ->where('platform_id', $request->platform_id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if ($existingRecord) {
+                    // 计算时间差（天数）
+                    $daysDiff = now()->diffInDays($existingRecord->created_at);
+                    
+                    // 如果在3天内（包括当天），标记为重复
+                    if ($daysDiff <= 3) {
+                        $isDuplicate = true;
+                    }
+                    // 超过3天的算新客资，不标记重复
+                }
             }
 
             // 使用数据库事务确保数据一致性
