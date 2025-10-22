@@ -115,7 +115,6 @@ class DataRecordController extends Controller
             $formattedRecords = DataRecordResource::collection($records)->response()->getData();
 
             return ApiResponse::paginated($formattedRecords, '获取数据记录列表成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取数据记录列表失败', $e->getMessage());
         }
@@ -160,11 +159,14 @@ class DataRecordController extends Controller
                     $existingRecord = DataRecord::where('phone', $request->phone)
                         ->orderBy('created_at', 'desc')
                         ->first();
-                    
+
+                    if ($existingRecord) {
+                        $isDuplicate = true;
+                    }
                     // if ($existingRecord) {
                     //     // 计算时间差（天数）
                     //     $daysDiff = now()->diffInDays($existingRecord->created_at);
-                        
+
                     //     // 如果在3天内（包括当天），标记为重复
                     //     if ($daysDiff <= 3) {
                     //         $isDuplicate = true;
@@ -182,7 +184,7 @@ class DataRecordController extends Controller
                 if ($existingRecord) {
                     // 计算时间差（天数）
                     $daysDiff = now()->diffInDays($existingRecord->created_at);
-                    
+
                     // 如果在3天内（包括当天），标记为重复
                     if ($daysDiff <= 3) {
                         $isDuplicate = true;
@@ -209,11 +211,11 @@ class DataRecordController extends Controller
                 try {
                     // 获取所有活跃公司的ID
                     $activeCompanyIds = Company::active()->pluck('id')->toArray();
-                    
+
                     if (!empty($activeCompanyIds)) {
                         // 调用批量分发服务
                         $this->assignmentService->batchAssign([$record->id], $activeCompanyIds);
-                        
+
                         Log::info('数据记录默认分发成功', [
                             'record_id' => $record->id,
                             'company_count' => count($activeCompanyIds),
@@ -243,7 +245,6 @@ class DataRecordController extends Controller
 
             // 使用资源类格式化响应，确保时间字段显示为北京时间
             return ApiResponse::created(new DataRecordResource($record), '创建数据记录成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('创建数据记录失败', $e->getMessage());
         }
@@ -266,7 +267,6 @@ class DataRecordController extends Controller
 
             // 使用资源类格式化响应，确保时间字段显示为北京时间
             return ApiResponse::success(new DataRecordResource($record), '获取数据记录详情成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取数据记录详情失败', $e->getMessage());
         }
@@ -316,7 +316,7 @@ class DataRecordController extends Controller
             if ($request->has('platform') || $request->has('platform_id')) {
                 $platform = $request->get('platform', $record->platform);
                 $platformId = $request->get('platform_id', $record->platform_id);
-                
+
                 $existingRecord = DataRecord::where('platform', $platform)
                     ->where('platform_id', $platformId)
                     ->where('id', '!=', $id)
@@ -346,7 +346,6 @@ class DataRecordController extends Controller
 
             // 使用资源类格式化响应，确保时间字段显示为北京时间
             return ApiResponse::updated(new DataRecordResource($record), '更新数据记录成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('更新数据记录失败', $e->getMessage());
         }
@@ -375,7 +374,6 @@ class DataRecordController extends Controller
             $record->delete();
 
             return ApiResponse::deleted('删除数据记录成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('删除数据记录失败', $e->getMessage());
         }
@@ -416,7 +414,6 @@ class DataRecordController extends Controller
             DataRecord::whereIn('id', $request->ids)->delete();
 
             return ApiResponse::deleted('批量删除数据记录成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('批量删除数据记录失败', $e->getMessage());
         }
@@ -439,7 +436,7 @@ class DataRecordController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // 查找数据记录
             $record = DataRecord::find($id);
             if (!$record) {
@@ -476,7 +473,6 @@ class DataRecordController extends Controller
 
             // 使用资源类格式化响应，确保时间字段显示为北京时间
             return ApiResponse::updated(new DataRecordResource($record), '领取数据记录成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('领取数据记录失败', $e->getMessage());
         }
@@ -493,7 +489,7 @@ class DataRecordController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // 查找数据记录
             $record = DataRecord::find($id);
             if (!$record) {
@@ -522,7 +518,6 @@ class DataRecordController extends Controller
             $record->claimer = $user;
 
             return ApiResponse::updated($record, '完成数据记录成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('完成数据记录失败', $e->getMessage());
         }
@@ -574,11 +569,11 @@ class DataRecordController extends Controller
 
                 // 加载关联数据，包含分发记录信息
                 $record->load([
-                    'submitter', 
+                    'submitter',
                     'claimer',
                     'assignments' => function ($query) use ($userCompanyId) {
                         $query->where('company_id', $userCompanyId)
-                              ->with('assignedTo');
+                            ->with('assignedTo');
                     }
                 ]);
 
@@ -588,7 +583,6 @@ class DataRecordController extends Controller
                     'assignment' => $assignment->fresh(['assignedTo']),
                 ], '标记重复记录成功');
             });
-
         } catch (\Exception $e) {
             Log::error('标记重复记录失败', [
                 'data_record_id' => $id,
@@ -596,7 +590,7 @@ class DataRecordController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return ApiResponse::serverError('标记重复记录失败', $e->getMessage());
         }
     }
@@ -641,7 +635,6 @@ class DataRecordController extends Controller
             ];
 
             return ApiResponse::success($stats, '获取统计信息成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取统计信息失败', $e->getMessage());
         }
@@ -657,18 +650,18 @@ class DataRecordController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // 获取分页参数
             $perPage = $request->get('per_page', 15);
-            
+
             // 使用 DataAssignmentService 获取可领取的分发数据
             $assignments = $this->assignmentService->getClaimableAssignments($user, [], $perPage);
-            
+
             // 转换数据格式以匹配前端期望的结构，使用资源类格式化时间
             $transformedData = $assignments->getCollection()->map(function ($assignment) {
                 $recordResource = new DataRecordResource($assignment->dataRecord);
                 $recordData = $recordResource->toArray(request());
-                
+
                 return [
                     'id' => $recordData['id'],
                     'image_url' => $recordData['image_url'],
@@ -680,7 +673,7 @@ class DataRecordController extends Controller
                     'assignment_id' => $assignment->id, // 添加分发记录ID用于后续操作
                 ];
             });
-            
+
             // 构建分页响应
             $paginatedResponse = new \Illuminate\Pagination\LengthAwarePaginator(
                 $transformedData,
@@ -694,7 +687,6 @@ class DataRecordController extends Controller
             );
 
             return ApiResponse::paginated($paginatedResponse, '获取企业可领取数据列表成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取企业可领取数据列表失败', $e->getMessage());
         }
@@ -710,13 +702,13 @@ class DataRecordController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // 获取分页参数
             $perPage = $request->get('per_page', 15);
-            
+
             // 使用 DataAssignmentService 获取用户已领取未完成的分发数据
             $assignments = $this->assignmentService->getUserClaimedIncompleteAssignments($user, [], $perPage);
-            
+
             // 转换数据格式以匹配前端期望的结构
             $transformedData = $assignments->getCollection()->map(function ($assignment) {
                 return [
@@ -731,7 +723,7 @@ class DataRecordController extends Controller
                     'assignment_id' => $assignment->id, // 添加分发记录ID用于后续操作
                 ];
             });
-            
+
             // 构建分页响应
             $paginatedResponse = new \Illuminate\Pagination\LengthAwarePaginator(
                 $transformedData,
@@ -745,7 +737,6 @@ class DataRecordController extends Controller
             );
 
             return ApiResponse::paginated($paginatedResponse, '获取我已领取未完成数据列表成功');
-
         } catch (\Exception $e) {
             return ApiResponse::serverError('获取我已领取未完成数据列表失败', $e->getMessage());
         }
@@ -808,7 +799,7 @@ class DataRecordController extends Controller
             if ($response->successful()) {
                 // 标记为已同步
                 $record->update(['synced_to_external' => true]);
-                
+
                 Log::info('数据记录同步到外部接口成功', [
                     'record_id' => $record->id,
                     'phone' => $record->phone,
@@ -823,7 +814,6 @@ class DataRecordController extends Controller
                     'response_body' => $response->body()
                 ]);
             }
-
         } catch (\Exception $e) {
             Log::error('数据记录同步到外部接口异常', [
                 'record_id' => $record->id,
