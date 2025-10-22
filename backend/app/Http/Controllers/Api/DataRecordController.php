@@ -823,4 +823,97 @@ class DataRecordController extends Controller
             ]);
         }
     }
+
+    /**
+     * 检查仅有手机号的重复数据
+     * 查找所有 image_url 为空且 phone 不为空的记录，标记重复数据
+     * 对于每个重复的手机号，只有最早的一条记录不是重复的
+     *
+     * @return JsonResponse
+     */
+    public function checkPhoneDuplicates(): JsonResponse
+    {
+        try {
+            // 查找所有仅有手机号的记录（image_url 为空且 phone 不为空）
+            $phoneOnlyRecords = DataRecord::whereNull('image_url')
+                ->whereNotNull('phone')
+                ->where('phone', '!=', '')
+                ->orderBy('phone')
+                ->orderBy('created_at')
+                ->get();
+
+            $totalRecords = $phoneOnlyRecords->count();
+            $duplicateCount = 0;
+            $updatedCount = 0;
+
+            // 按手机号分组
+            $groupedByPhone = $phoneOnlyRecords->groupBy('phone');
+
+            // 统计信息
+            $duplicatePhones = [];
+            $processedPhones = [];
+
+            DB::beginTransaction();
+
+            foreach ($groupedByPhone as $phone => $records) {
+                if ($records->count() > 1) {
+                    // 有重复的手机号
+                    $duplicatePhones[] = $phone;
+                    $duplicateCount += $records->count() - 1; // 除了最早的一条，其他都是重复的
+
+                    // 按创建时间排序，最早的保持 is_duplicate = false
+                    $sortedRecords = $records->sortBy('created_at');
+                    $isFirst = true;
+
+                    foreach ($sortedRecords as $record) {
+                        if ($isFirst) {
+                            // 最早的记录，确保不是重复的
+                            if ($record->is_duplicate) {
+                                $record->update(['is_duplicate' => false]);
+                                $updatedCount++;
+                            }
+                            $isFirst = false;
+                        } else {
+                            // 其他记录标记为重复
+                            if (!$record->is_duplicate) {
+                                $record->update(['is_duplicate' => true]);
+                                $updatedCount++;
+                            }
+                        }
+                    }
+
+                    $processedPhones[] = [
+                        'phone' => $phone,
+                        'total_records' => $records->count(),
+                        'duplicate_records' => $records->count() - 1,
+                        'earliest_record_id' => $sortedRecords->first()->id,
+                        'earliest_created_at' => $sortedRecords->first()->created_at->format('Y-m-d H:i:s')
+                    ];
+                }
+            }
+
+            DB::commit();
+
+            return ApiResponse::success([
+                'summary' => [
+                    'total_phone_only_records' => $totalRecords,
+                    'unique_phones' => $groupedByPhone->count(),
+                    'duplicate_phones_count' => count($duplicatePhones),
+                    'total_duplicate_records' => $duplicateCount,
+                    'updated_records' => $updatedCount
+                ],
+                'duplicate_phones' => $duplicatePhones,
+                'processed_details' => $processedPhones
+            ], '手机号重复检查完成');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('检查手机号重复数据失败', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return ApiResponse::error('检查手机号重复数据失败：' . $e->getMessage(), 500);
+        }
+    }
 }
