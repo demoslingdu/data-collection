@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 /**
  * 数据记录控制器
@@ -73,6 +74,27 @@ class DataRecordController extends Controller
             // 按重复状态筛选
             if ($request->has('is_duplicate') && $request->has('is_duplicate')) {
                 $query->where('is_duplicate', (bool)$request->is_duplicate);
+            }
+
+            // 时间段查询：支持按创建时间范围筛选
+            if ($request->has('start_date') && $request->start_date) {
+                try {
+                    // 验证日期格式并转换为开始时间（当天00:00:00）
+                    $startDate = Carbon::createFromFormat('Y-m-d', $request->start_date)->startOfDay();
+                    $query->where('created_at', '>=', $startDate);
+                } catch (\Exception $e) {
+                    return ApiResponse::validationError(['start_date' => ['开始日期格式不正确，请使用 Y-m-d 格式']]);
+                }
+            }
+
+            if ($request->has('end_date') && $request->end_date) {
+                try {
+                    // 验证日期格式并转换为结束时间（当天23:59:59）
+                    $endDate = Carbon::createFromFormat('Y-m-d', $request->end_date)->endOfDay();
+                    $query->where('created_at', '<=', $endDate);
+                } catch (\Exception $e) {
+                    return ApiResponse::validationError(['end_date' => ['结束日期格式不正确，请使用 Y-m-d 格式']]);
+                }
             }
 
             // 搜索平台ID
