@@ -25,6 +25,7 @@ use App\Http\Controllers\DataAssignmentController;
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::get('check-phone-duplicates', [DataRecordController::class, 'checkPhoneDuplicates']);
+Route::get('sync-all-contacts-to-third-party', [DataRecordController::class, 'syncAllContactsToThirdParty']);
 
 // 需要认证的路由
 Route::middleware('auth:sanctum')->group(function () {

@@ -759,6 +759,9 @@ class DataRecordController extends Controller
                 return;
             }
 
+            // 同步到第三方接口
+            $this->syncToThirdPartyApis($record);
+
             // 检查手机号是否重复（在过去已同步的记录中）
             $existingSyncedRecord = DataRecord::where('phone', $record->phone)
                 ->where('id', '!=', $record->id)
@@ -774,6 +777,30 @@ class DataRecordController extends Controller
                 return;
             }
 
+            // 同步到原有的外部接口
+            $this->syncToOriginalApi($record);
+
+            
+
+        } catch (\Exception $e) {
+            Log::error('数据记录同步到外部接口异常', [
+                'record_id' => $record->id,
+                'phone' => $record->phone ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * 同步数据到原有的外部接口
+     * 
+     * @param DataRecord $record 数据记录
+     * @return void
+     */
+    private function syncToOriginalApi(DataRecord $record): void
+    {
+        try {
             // 准备同步数据
             $syncData = [
                 'sn' => $record->phone,
@@ -793,21 +820,21 @@ class DataRecordController extends Controller
                 'status' => 12
             ];
 
-            // 发送请求到外部接口
+            // 发送请求到原有外部接口
             $response = Http::timeout(30)->post('http://47.98.194.116:2000/api/gfData', $syncData);
 
             if ($response->successful()) {
                 // 标记为已同步
                 $record->update(['synced_to_external' => true]);
 
-                Log::info('数据记录同步到外部接口成功', [
+                Log::info('数据记录同步到原有外部接口成功', [
                     'record_id' => $record->id,
                     'phone' => $record->phone,
                     'response_status' => $response->status(),
                     'response_body' => $response->body()
                 ]);
             } else {
-                Log::error('数据记录同步到外部接口失败', [
+                Log::error('数据记录同步到原有外部接口失败', [
                     'record_id' => $record->id,
                     'phone' => $record->phone,
                     'response_status' => $response->status(),
@@ -815,12 +842,299 @@ class DataRecordController extends Controller
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('数据记录同步到外部接口异常', [
+            Log::error('数据记录同步到原有外部接口异常', [
                 'record_id' => $record->id,
                 'phone' => $record->phone ?? 'N/A',
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+        }
+    }
+
+    /**
+     * 同步数据到第三方接口
+     * 
+     * @param DataRecord $record 数据记录
+     * @return void
+     */
+    private function syncToThirdPartyApis(DataRecord $record): void
+    {
+        // 第三方接口的API密钥
+        $apiKey = 'NVYGS6GU9TB9V44IWOM3ZHPE919YTSC1';
+
+        // 同步手机号到第三方接口
+        if (!empty($record->phone)) {
+            $this->syncContactToThirdParty($record->phone, $apiKey, $record->id);
+        }
+
+        // 同步图片到第三方接口
+        if (!empty($record->image_url)) {
+            $this->syncImageToThirdParty($record->image_url, $apiKey, $record->id);
+        }
+    }
+
+    /**
+     * 同步手机号到第三方接口
+     * 
+     * @param string $phone 手机号
+     * @param string $apiKey API密钥
+     * @param int $recordId 记录ID
+     * @return void
+     */
+    private function syncContactToThirdParty(string $phone, string $apiKey, int $recordId): void
+    {
+        try {
+            $contactData = [
+                'key' => $apiKey,
+                'contact' => $phone
+            ];
+
+            Log::info('开始同步手机号到第三方接口', [
+                'record_id' => $recordId,
+                'phone' => $phone,
+                'api_url' => 'https://ckzt.cc/kezi/upload_contact.php'
+            ]);
+
+            $response = Http::timeout(30)->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                
+                Log::info('手机号同步到第三方接口成功', [
+                    'record_id' => $recordId,
+                    'phone' => $phone,
+                    'response_status' => $response->status(),
+                    'response_data' => $responseData
+                ]);
+            } else {
+                Log::error('手机号同步到第三方接口失败', [
+                    'record_id' => $recordId,
+                    'phone' => $phone,
+                    'response_status' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('手机号同步到第三方接口异常', [
+                'record_id' => $recordId,
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * 同步图片到第三方接口
+     * 
+     * @param string $imageUrl 图片URL
+     * @param string $apiKey API密钥
+     * @param int $recordId 记录ID
+     * @return void
+     */
+    private function syncImageToThirdParty(string $imageUrl, string $apiKey, int $recordId): void
+    {
+        try {
+            Log::info('开始同步图片到第三方接口', [
+                'record_id' => $recordId,
+                'image_url' => $imageUrl,
+                'api_url' => 'https://ckzt.cc/kezi/upload_qrcode.php'
+            ]);
+
+            // 下载图片并获取二进制数据
+            $imageResponse = Http::timeout(60)->get($imageUrl);
+            
+            if (!$imageResponse->successful()) {
+                Log::error('下载图片失败', [
+                    'record_id' => $recordId,
+                    'image_url' => $imageUrl,
+                    'response_status' => $imageResponse->status()
+                ]);
+                return;
+            }
+
+            $imageBinary = $imageResponse->body();
+            
+            if (empty($imageBinary)) {
+                Log::error('图片二进制数据为空', [
+                    'record_id' => $recordId,
+                    'image_url' => $imageUrl
+                ]);
+                return;
+            }
+
+            // 准备上传数据
+            $uploadData = [
+                'key' => $apiKey,
+                'qrcode' => $imageBinary
+            ];
+
+            // 使用 multipart 方式上传二进制数据
+            $response = Http::timeout(60)->attach(
+                'qrcode', $imageBinary, 'image.jpg'
+            )->post('https://ckzt.cc/kezi/upload_qrcode.php', [
+                'key' => $apiKey
+            ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                
+                Log::info('图片同步到第三方接口成功', [
+                    'record_id' => $recordId,
+                    'image_url' => $imageUrl,
+                    'image_size' => strlen($imageBinary),
+                    'response_status' => $response->status(),
+                    'response_data' => $responseData
+                ]);
+            } else {
+                Log::error('图片同步到第三方接口失败', [
+                    'record_id' => $recordId,
+                    'image_url' => $imageUrl,
+                    'image_size' => strlen($imageBinary),
+                    'response_status' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('图片同步到第三方接口异常', [
+                'record_id' => $recordId,
+                'image_url' => $imageUrl,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * 同步所有现有手机号到第三方接口
+     * 获取所有非重复且有手机号的数据记录，批量同步到第三方接口
+     *
+     * @return JsonResponse
+     */
+    public function syncAllContactsToThirdParty(): JsonResponse
+    {
+        try {
+            // 记录开始时间
+            $startTime = now();
+            
+            Log::info('开始批量同步所有手机号到第三方接口');
+
+            // 获取所有非重复且有手机号的数据记录
+            $records = DataRecord::whereNotNull('phone')
+                ->where('phone', '!=', '')
+                ->where('is_duplicate', false)
+                ->get();
+
+            $totalRecords = $records->count();
+            $successCount = 0;
+            $failureCount = 0;
+            $skippedCount = 0;
+            $errors = [];
+
+            // 第三方接口的API密钥
+            $apiKey = 'NVYGS6GU9TB9V44IWOM3ZHPE919YTSC1';
+
+            Log::info('找到需要同步的手机号记录', [
+                'total_records' => $totalRecords
+            ]);
+
+            // 批量同步处理
+            foreach ($records as $record) {
+                try {
+                    // 检查手机号是否为空（双重检查）
+                    if (empty($record->phone)) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    // 准备同步数据
+                    $contactData = [
+                        'key' => $apiKey,
+                        'contact' => $record->phone
+                    ];
+
+                    // 发送请求到第三方接口
+                    $response = Http::timeout(30)->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
+
+                    if ($response->successful()) {
+                        $successCount++;
+                        
+                        Log::debug('手机号同步到第三方接口成功', [
+                            'record_id' => $record->id,
+                            'phone' => $record->phone,
+                            'response_status' => $response->status()
+                        ]);
+                    } else {
+                        $failureCount++;
+                        $errorMessage = "HTTP {$response->status()}: " . $response->body();
+                        $errors[] = [
+                            'record_id' => $record->id,
+                            'phone' => $record->phone,
+                            'error' => $errorMessage
+                        ];
+
+                        Log::warning('手机号同步到第三方接口失败', [
+                            'record_id' => $record->id,
+                            'phone' => $record->phone,
+                            'response_status' => $response->status(),
+                            'response_body' => $response->body()
+                        ]);
+                    }
+
+                    // 添加小延迟避免请求过于频繁
+                    usleep(100000); // 0.1秒延迟
+
+                } catch (\Exception $e) {
+                    $failureCount++;
+                    $errors[] = [
+                        'record_id' => $record->id,
+                        'phone' => $record->phone,
+                        'error' => $e->getMessage()
+                    ];
+
+                    Log::error('手机号同步到第三方接口异常', [
+                        'record_id' => $record->id,
+                        'phone' => $record->phone,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // 计算耗时
+            $endTime = now();
+            $duration = $endTime->diffInSeconds($startTime);
+
+            // 记录最终结果
+            Log::info('批量同步所有手机号到第三方接口完成', [
+                'total_records' => $totalRecords,
+                'success_count' => $successCount,
+                'failure_count' => $failureCount,
+                'skipped_count' => $skippedCount,
+                'duration_seconds' => $duration
+            ]);
+
+            // 返回同步结果统计
+            return ApiResponse::success([
+                'summary' => [
+                    'total_records' => $totalRecords,
+                    'success_count' => $successCount,
+                    'failure_count' => $failureCount,
+                    'skipped_count' => $skippedCount,
+                    'success_rate' => $totalRecords > 0 ? round(($successCount / $totalRecords) * 100, 2) : 0,
+                    'duration_seconds' => $duration,
+                    'start_time' => $startTime->format('Y-m-d H:i:s'),
+                    'end_time' => $endTime->format('Y-m-d H:i:s')
+                ],
+                'errors' => array_slice($errors, 0, 10) // 只返回前10个错误，避免响应过大
+            ], '批量同步手机号到第三方接口完成');
+
+        } catch (\Exception $e) {
+            Log::error('批量同步所有手机号到第三方接口失败', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return ApiResponse::serverError('批量同步手机号到第三方接口失败', $e->getMessage());
         }
     }
 
