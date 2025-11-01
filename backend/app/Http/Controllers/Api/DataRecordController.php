@@ -1088,6 +1088,8 @@ class DataRecordController extends Controller
             DataRecord::whereNotNull('phone')
                 ->where('phone', '!=', '')
                 ->where('is_duplicate', false)
+                ->where('id','>',6966)
+                ->where('id','<',11514)
                 ->chunk($batchSize, function ($records) use (&$successCount, &$failureCount, &$skippedCount, &$errors, &$processedCount, &$batchNumber, $apiKey, $totalRecords) {
                     $batchNumber++;
                     
