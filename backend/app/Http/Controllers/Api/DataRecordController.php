@@ -867,10 +867,10 @@ class DataRecordController extends Controller
             $this->syncContactToThirdParty($record->phone, $apiKey, $record->id);
         }
 
-        // 同步图片到第三方接口
-        if (!empty($record->image_url)) {
-            $this->syncImageToThirdParty($record->image_url, $apiKey, $record->id);
-        }
+        // // 同步图片到第三方接口
+        // if (!empty($record->image_url)) {
+        //     $this->syncImageToThirdParty($record->image_url, $apiKey, $record->id);
+        // }
     }
 
     /**
@@ -892,10 +892,27 @@ class DataRecordController extends Controller
             Log::info('开始同步手机号到第三方接口', [
                 'record_id' => $recordId,
                 'phone' => $phone,
-                'api_url' => 'https://ckzt.cc/kezi/upload_contact.php'
+                'api_url' => 'https://ckzt.cc/kezi/upload_contact.php',
+                'send_data' => $contactData
             ]);
 
-            $response = Http::timeout(30)->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
+            // 使用 asForm() 方法发送 form-data 格式数据，而不是默认的 JSON 格式
+            $response = Http::timeout(30)
+                ->asForm()
+                ->withHeaders([
+                    'User-Agent' => 'Laravel-Http-Client/1.0',
+                    'Accept' => 'application/json, text/plain, */*'
+                ])
+                ->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
+
+            // 记录请求详细信息用于调试
+            Log::debug('第三方接口请求详情', [
+                'record_id' => $recordId,
+                'phone' => $phone,
+                'request_headers' => $response->transferStats?->getRequest()?->getHeaders() ?? 'N/A',
+                'request_body' => http_build_query($contactData),
+                'content_type' => 'application/x-www-form-urlencoded'
+            ]);
 
             if ($response->successful()) {
                 $responseData = $response->json();
@@ -904,6 +921,7 @@ class DataRecordController extends Controller
                     'record_id' => $recordId,
                     'phone' => $phone,
                     'response_status' => $response->status(),
+                    'response_headers' => $response->headers(),
                     'response_data' => $responseData
                 ]);
             } else {
@@ -911,7 +929,28 @@ class DataRecordController extends Controller
                     'record_id' => $recordId,
                     'phone' => $phone,
                     'response_status' => $response->status(),
+                    'response_headers' => $response->headers(),
                     'response_body' => $response->body()
+                ]);
+
+                // 如果 form-data 格式失败，尝试 JSON 格式作为备选方案
+                Log::info('尝试使用JSON格式重新发送', [
+                    'record_id' => $recordId,
+                    'phone' => $phone
+                ]);
+
+                $jsonResponse = Http::timeout(30)
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'User-Agent' => 'Laravel-Http-Client/1.0'
+                    ])
+                    ->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
+
+                Log::debug('JSON格式请求结果', [
+                    'record_id' => $recordId,
+                    'phone' => $phone,
+                    'json_response_status' => $jsonResponse->status(),
+                    'json_response_body' => $jsonResponse->body()
                 ]);
             }
         } catch (\Exception $e) {
@@ -1014,18 +1053,21 @@ class DataRecordController extends Controller
     public function syncAllContactsToThirdParty(): JsonResponse
     {
         try {
+            // 设置更长的执行时间限制（5分钟）
+            set_time_limit(300);
+            
             // 记录开始时间
             $startTime = now();
             
             Log::info('开始批量同步所有手机号到第三方接口');
 
-            // 获取所有非重复且有手机号的数据记录
-            $records = DataRecord::whereNotNull('phone')
+            // 分批获取数据，避免内存溢出
+            $batchSize = 100; // 每批处理100条记录
+            $totalRecords = DataRecord::whereNotNull('phone')
                 ->where('phone', '!=', '')
                 ->where('is_duplicate', false)
-                ->get();
+                ->count();
 
-            $totalRecords = $records->count();
             $successCount = 0;
             $failureCount = 0;
             $skippedCount = 0;
@@ -1035,11 +1077,27 @@ class DataRecordController extends Controller
             $apiKey = 'NVYGS6GU9TB9V44IWOM3ZHPE919YTSC1';
 
             Log::info('找到需要同步的手机号记录', [
-                'total_records' => $totalRecords
+                'total_records' => $totalRecords,
+                'batch_size' => $batchSize
             ]);
 
-            // 批量同步处理
-            foreach ($records as $record) {
+            // 分批处理数据
+            $processedCount = 0;
+            $batchNumber = 0;
+            
+            DataRecord::whereNotNull('phone')
+                ->where('phone', '!=', '')
+                ->where('is_duplicate', false)
+                ->chunk($batchSize, function ($records) use (&$successCount, &$failureCount, &$skippedCount, &$errors, &$processedCount, &$batchNumber, $apiKey, $totalRecords) {
+                    $batchNumber++;
+                    
+                    Log::info("开始处理第 {$batchNumber} 批数据", [
+                        'batch_size' => $records->count(),
+                        'processed_count' => $processedCount,
+                        'total_records' => $totalRecords
+                    ]);
+
+                    foreach ($records as $record) {
                 try {
                     // 检查手机号是否为空（双重检查）
                     if (empty($record->phone)) {
@@ -1053,8 +1111,14 @@ class DataRecordController extends Controller
                         'contact' => $record->phone
                     ];
 
-                    // 发送请求到第三方接口
-                    $response = Http::timeout(30)->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
+                    // 发送请求到第三方接口 - 使用 form-data 格式
+                    $response = Http::timeout(30)
+                        ->asForm()
+                        ->withHeaders([
+                            'User-Agent' => 'Laravel-Http-Client/1.0',
+                            'Accept' => 'application/json, text/plain, */*'
+                        ])
+                        ->post('https://ckzt.cc/kezi/upload_contact.php', $contactData);
 
                     if ($response->successful()) {
                         $successCount++;
@@ -1081,24 +1145,34 @@ class DataRecordController extends Controller
                         ]);
                     }
 
-                    // 添加小延迟避免请求过于频繁
-                    usleep(100000); // 0.1秒延迟
+                        // 添加小延迟避免请求过于频繁
+                        usleep(50000); // 0.05秒延迟
+                        $processedCount++;
 
-                } catch (\Exception $e) {
-                    $failureCount++;
-                    $errors[] = [
-                        'record_id' => $record->id,
-                        'phone' => $record->phone,
-                        'error' => $e->getMessage()
-                    ];
+                    } catch (\Exception $e) {
+                        $failureCount++;
+                        $errors[] = [
+                            'record_id' => $record->id,
+                            'phone' => $record->phone,
+                            'error' => $e->getMessage()
+                        ];
 
-                    Log::error('手机号同步到第三方接口异常', [
-                        'record_id' => $record->id,
-                        'phone' => $record->phone,
-                        'error' => $e->getMessage()
-                    ]);
+                        Log::error('手机号同步到第三方接口异常', [
+                            'record_id' => $record->id,
+                            'phone' => $record->phone,
+                            'error' => $e->getMessage()
+                        ]);
+                        $processedCount++;
+                    }
                 }
-            }
+                
+                Log::info("第 {$batchNumber} 批数据处理完成", [
+                    'batch_processed' => $records->count(),
+                    'total_processed' => $processedCount,
+                    'success_count' => $successCount,
+                    'failure_count' => $failureCount
+                ]);
+            });
 
             // 计算耗时
             $endTime = now();
