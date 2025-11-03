@@ -22,6 +22,19 @@
             </template>
           </a-input>
         </a-form-item>
+        <a-form-item label="手机号">
+          <a-input
+            v-model="searchForm.phone"
+            placeholder="请输入手机号搜索"
+            style="width: 180px"
+            allow-clear
+            @press-enter="handleSearch"
+          >
+            <template #prefix>
+              <icon-phone />
+            </template>
+          </a-input>
+        </a-form-item>
         <a-form-item label="ID查询">
           <a-input-number
             v-model="searchForm.id"
@@ -148,7 +161,8 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import {
   IconSearch,
-  IconRefresh
+  IconRefresh,
+  IconPhone
 } from '@arco-design/web-vue/es/icon'
 import { useAuthStore } from '@/stores/auth'
 import { dataRecordApi } from '@/api/dataRecord'
@@ -163,6 +177,7 @@ const loading = ref(false)
 // 搜索表单
 const searchForm = reactive({
   keyword: '',
+  phone: '',
   id: undefined,
   platform: '',
   dateRange: []
@@ -284,6 +299,7 @@ const handleSearch = () => {
  */
 const handleReset = () => {
   searchForm.keyword = ''
+  searchForm.phone = ''
   searchForm.id = undefined
   searchForm.platform = ''
   searchForm.dateRange = []
@@ -324,6 +340,11 @@ const loadData = async () => {
     // 添加搜索条件
     if (searchForm.keyword) {
       params.search = searchForm.keyword
+    }
+    
+    // 手机号模糊查询
+    if (searchForm.phone) {
+      params.phone = searchForm.phone
     }
     
     // ID精确查询

@@ -102,6 +102,11 @@ class DataRecordController extends Controller
                 $query->where('platform_id', 'like', '%' . $request->search . '%');
             }
 
+            // 手机号模糊查询
+            if ($request->has('phone') && $request->phone) {
+                $query->where('phone', 'like', '%' . $request->phone . '%');
+            }
+
             // 排序
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
