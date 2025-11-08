@@ -139,6 +139,7 @@ class DataRecordController extends Controller
                 'platform' => 'required|in:douyin,xiaohongshu,taobao,xianyu',
                 'platform_id' => 'required|string|max:255',
                 'phone' => 'nullable|string|max:20|regex:/^1[3-9]\d{9}$/',
+                'remark' => 'nullable|string|max:1000',
             ], [
                 'image_url.url' => '图片URL格式不正确',
                 'platform.required' => '来源平台不能为空',
@@ -147,6 +148,7 @@ class DataRecordController extends Controller
                 'platform_id.max' => '平台ID不能超过255个字符',
                 'phone.max' => '手机号不能超过20个字符',
                 'phone.regex' => '手机号格式不正确，请输入有效的11位手机号',
+                'remark.max' => '备注不能超过1000个字符',
             ]);
 
             if ($validator->fails()) {
@@ -207,6 +209,7 @@ class DataRecordController extends Controller
                     'platform' => $request->platform,
                     'platform_id' => $request->platform_id,
                     'phone' => $request->phone,
+                    'remark' => $request->remark,
                     'is_claimed' => false,
                     'is_completed' => false,
                     'is_duplicate' => $isDuplicate,
@@ -303,6 +306,7 @@ class DataRecordController extends Controller
                 'platform' => 'sometimes|required|in:douyin,xiaohongshu,taobao,xianyu',
                 'platform_id' => 'sometimes|required|string|max:255',
                 'is_duplicate' => 'sometimes|boolean',
+                'remark' => 'nullable|string|max:1000',
             ], [
                 'image_url.required' => '图片URL不能为空',
                 'image_url.url' => '图片URL格式不正确',
@@ -311,6 +315,7 @@ class DataRecordController extends Controller
                 'platform_id.required' => '平台ID不能为空',
                 'platform_id.max' => '平台ID不能超过255个字符',
                 'is_duplicate.boolean' => '重复状态必须是布尔值',
+                'remark.max' => '备注不能超过1000个字符',
             ]);
 
             if ($validator->fails()) {
@@ -344,6 +349,9 @@ class DataRecordController extends Controller
             }
             if ($request->has('is_duplicate')) {
                 $updateData['is_duplicate'] = $request->is_duplicate;
+            }
+            if ($request->has('remark')) {
+                $updateData['remark'] = $request->remark;
             }
 
             $record->update($updateData);
