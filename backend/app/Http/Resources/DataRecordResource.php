@@ -23,6 +23,7 @@ class DataRecordResource extends JsonResource
         return [
             'id' => $this->id,
             'image_url' => $this->image_url,
+            'chat_images' => $this->chat_images,
             'submitter_id' => $this->submitter_id,
             'platform' => $this->platform,
             'platform_id' => $this->platform_id,

@@ -22,6 +22,7 @@ class DataRecord extends Model
      */
     protected $fillable = [
         'image_url',
+        'chat_images',
         'submitter_id',
         'platform',
         'platform_id',
@@ -44,6 +45,7 @@ class DataRecord extends Model
         'is_completed' => 'boolean',
         'is_duplicate' => 'boolean',
         'synced_to_external' => 'boolean',
+        'chat_images' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

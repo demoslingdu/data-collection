@@ -136,15 +136,18 @@ class DataRecordController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'image_url' => 'nullable|url',
+                'chat_images' => 'nullable|array',
+                'chat_images.*' => 'string|url|max:2048',
                 'platform' => 'required|in:douyin,xiaohongshu,taobao,xianyu',
-                'platform_id' => 'required|string|max:255',
-                'phone' => 'nullable|string|max:20|regex:/^1[3-9]\d{9}$/',
+                'platform_id' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:20|regex:/^1[3-9]\\d{9}$/',
                 'remark' => 'nullable|string|max:1000',
             ], [
                 'image_url.url' => '图片URL格式不正确',
+                'chat_images.array' => '聊天图片必须是数组',
+                'chat_images.*.url' => '聊天图片URL格式不正确',
                 'platform.required' => '来源平台不能为空',
                 'platform.in' => '来源平台必须是：douyin, xiaohongshu, taobao, xianyu',
-                'platform_id.required' => '平台ID不能为空',
                 'platform_id.max' => '平台ID不能超过255个字符',
                 'phone.max' => '手机号不能超过20个字符',
                 'phone.regex' => '手机号格式不正确，请输入有效的11位手机号',
@@ -182,21 +185,19 @@ class DataRecordController extends Controller
                     // }
                 }
             } else {
-                // 情况2：有图片URL时，使用原来的平台和平台ID进行排重
-                $existingRecord = DataRecord::where('platform', $request->platform)
-                    ->where('platform_id', $request->platform_id)
-                    ->orderBy('created_at', 'desc')
-                    ->first();
+                // 情况2：有图片URL时，若存在平台ID则基于平台和平台ID排重
+                if (!empty($request->platform_id)) {
+                    $existingRecord = DataRecord::where('platform', $request->platform)
+                        ->where('platform_id', $request->platform_id)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
 
-                if ($existingRecord) {
-                    // 计算时间差（天数）
-                    $daysDiff = now()->diffInDays($existingRecord->created_at);
-
-                    // 如果在3天内（包括当天），标记为重复
-                    if ($daysDiff <= 3) {
-                        $isDuplicate = true;
+                    if ($existingRecord) {
+                        $daysDiff = now()->diffInDays($existingRecord->created_at);
+                        if ($daysDiff <= 3) {
+                            $isDuplicate = true;
+                        }
                     }
-                    // 超过3天的算新客资，不标记重复
                 }
             }
 
@@ -205,6 +206,7 @@ class DataRecordController extends Controller
                 // 创建数据记录
                 $record = DataRecord::create([
                     'image_url' => $request->image_url,
+                    'chat_images' => $request->chat_images,
                     'submitter_id' => Auth::id(),
                     'platform' => $request->platform,
                     'platform_id' => $request->platform_id,
@@ -303,16 +305,19 @@ class DataRecordController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'image_url' => 'sometimes|required|url',
+                'chat_images' => 'sometimes|array',
+                'chat_images.*' => 'string|url|max:2048',
                 'platform' => 'sometimes|required|in:douyin,xiaohongshu,taobao,xianyu',
-                'platform_id' => 'sometimes|required|string|max:255',
+                'platform_id' => 'sometimes|nullable|string|max:255',
                 'is_duplicate' => 'sometimes|boolean',
                 'remark' => 'nullable|string|max:1000',
             ], [
                 'image_url.required' => '图片URL不能为空',
                 'image_url.url' => '图片URL格式不正确',
+                'chat_images.array' => '聊天图片必须是数组',
+                'chat_images.*.url' => '聊天图片URL格式不正确',
                 'platform.required' => '来源平台不能为空',
                 'platform.in' => '来源平台必须是：douyin, xiaohongshu, taobao, xianyu',
-                'platform_id.required' => '平台ID不能为空',
                 'platform_id.max' => '平台ID不能超过255个字符',
                 'is_duplicate.boolean' => '重复状态必须是布尔值',
                 'remark.max' => '备注不能超过1000个字符',
@@ -323,7 +328,7 @@ class DataRecordController extends Controller
             }
 
             // 如果更新平台或平台ID，检查唯一性
-            if ($request->has('platform') || $request->has('platform_id')) {
+            if (($request->has('platform') || $request->has('platform_id')) && !is_null($request->get('platform_id', $record->platform_id))) {
                 $platform = $request->get('platform', $record->platform);
                 $platformId = $request->get('platform_id', $record->platform_id);
 
@@ -340,6 +345,9 @@ class DataRecordController extends Controller
             $updateData = [];
             if ($request->has('image_url')) {
                 $updateData['image_url'] = $request->image_url;
+            }
+            if ($request->has('chat_images')) {
+                $updateData['chat_images'] = $request->chat_images;
             }
             if ($request->has('platform')) {
                 $updateData['platform'] = $request->platform;
