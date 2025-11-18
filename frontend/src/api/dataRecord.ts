@@ -19,6 +19,8 @@ export interface DataRecord {
   notes?: string
   phone?: string
   image_url?: string
+  // 会话图片数组（用于预览组）
+  chat_images?: string[]
   status: 'unclaimed' | 'claimed' | 'completed'
   submitter_id: number
   claimer_id?: number | null

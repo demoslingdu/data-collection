@@ -107,20 +107,64 @@
 
         @page-change="handlePageChange"
         @page-size-change="handlePageSizeChange"
-        :scroll="{ x: 1200, y: 600 }"
+        :scroll="{ x: 1380, y: 600 }"
         stripe
         hoverable
         size="large"
       >
         <template #image="{ record }">
-          <a-image
-            :src="record.image_url"
-            width="60"
-            height="60"
-            fit="cover"
-            :preview="true"
-            style="border-radius: 4px; cursor: pointer;"
-          />
+          <div class="image-cell">
+            <a-image-preview-group v-if="record.image_url">
+              <a-image
+                :src="record.image_url"
+                width="60"
+                height="60"
+                fit="cover"
+                :preview="true"
+                style="border-radius: 4px; cursor: pointer;"
+              />
+            </a-image-preview-group>
+            <span v-else class="image-empty">无图</span>
+          </div>
+        </template>
+        <template #chat_images="{ record }">
+          <div class="image-cell">
+            <a-image-preview-group v-if="buildChatImageList(record).length">
+              <a-image
+                :src="buildChatImageList(record)[0]"
+                width="60"
+                height="60"
+                fit="cover"
+                :preview="true"
+                style="border-radius: 4px; cursor: pointer;"
+              />
+              <a-image
+                v-for="(url, idx) in buildChatImageList(record).slice(1, 3)"
+                :key="`chat-extra-${record.id}-${idx}`"
+                :src="url"
+                width="18"
+                height="18"
+                fit="cover"
+                :preview="true"
+                style="border-radius: 3px; margin-left: 4px; cursor: pointer;"
+              />
+              <a-image
+                v-for="(url, idx) in buildChatImageList(record).slice(3)"
+                :key="`chat-hidden-${record.id}-${idx}`"
+                :src="url"
+                width="0"
+                height="0"
+                style="display: none;"
+              />
+              <div
+                v-if="buildChatImageList(record).length > 3"
+                class="more-counter"
+              >
+                +{{ buildChatImageList(record).length - 3 }}
+              </div>
+            </a-image-preview-group>
+            <span v-else class="image-empty">无图</span>
+          </div>
         </template>
         <template #platform="{ record }">
           {{ getPlatformText(record.platform) }}
@@ -223,6 +267,13 @@ const columns = [
     align: 'center'
   },
   {
+    title: '聊天截图',
+    dataIndex: 'chat_images',
+    slotName: 'chat_images',
+    width: 180,
+    align: 'center'
+  },
+  {
     title: '提交人',
     dataIndex: 'submitter',
     slotName: 'submitter',
@@ -270,6 +321,16 @@ const columns = [
 // 表格数据
 const tableData = ref<DataRecord[]>([])
 
+/**
+ * 构建图片列表（主图 + 会话图片）
+ *
+ * @param record 数据记录
+ * @returns 所有图片 URL 列表
+ */
+const buildChatImageList = (record: DataRecord): string[] => {
+  if (!Array.isArray(record.chat_images)) return []
+  return record.chat_images.filter(Boolean)
+}
 /**
  * 获取平台中文名称
  */
@@ -457,6 +518,30 @@ onMounted(() => {
 .phone-empty {
   color: #86909c;
   font-style: italic;
+}
+
+/* 图片列样式，保证行高 60px */
+.image-cell {
+  height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.more-counter {
+  margin-left: 6px;
+  min-width: 22px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  padding: 0 6px;
+}
+
+.image-empty {
+  color: #86909c;
 }
 
 
